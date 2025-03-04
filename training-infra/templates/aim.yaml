@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: my-aim-deployment
+  name: my-aim-deployment
+spec:
+  selector:
+    matchLabels:
+      app: my-aim-deployment
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        app: my-aim-deployment
+    spec:
+      containers:
+      - image: aimstack/aim:latest
+        name: my-aim-deployment
+        ports:
+          - containerPort: 43800
+            protocol: TCP
+        resources:
+          limits:
+            cpu: 0.5
+            memory: 1Gi
+          requests:
+            cpu: 100m
+            memory: 1Gi
+        volumeMounts:
+          - mountPath: /aim
+            name: aim-runs
+      volumes:
+        - name: aim-runs
+          persistentVolumeClaim:
+            claimName: aim-runs-claim
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-aim-service
+spec:
+  selector:
+    app: my-aim-deployment
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 43800
