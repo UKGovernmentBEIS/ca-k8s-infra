@@ -2,12 +2,12 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app: my-aim-deployment
-  name: my-aim-deployment
+    app: aim-deployment
+  name: aim-deployment
 spec:
   selector:
     matchLabels:
-      app: my-aim-deployment
+      app: aim-deployment
   strategy:
     rollingUpdate:
       maxSurge: 25%
@@ -16,11 +16,13 @@ spec:
   template:
     metadata:
       labels:
-        app: my-aim-deployment
+        app: aim-deployment
     spec:
       containers:
       - image: aimstack/aim:latest
-        name: my-aim-deployment
+        name: aim-deployment
+        command: ["aim"]
+        args: ["up", "--repo", "/aim"]
         ports:
           - containerPort: 43800
             protocol: TCP
@@ -42,10 +44,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: my-aim-service
+  name: aim
 spec:
   selector:
-    app: my-aim-deployment
+    app: aim-deployment
   ports:
     - protocol: TCP
       port: 80

@@ -7,7 +7,7 @@ spec:
     spec:
       containers:
       - name: model-sync
-        image: localhost:5001/jobs
+        image: localhost:5001/jobs:{{ .Values.environment }}
         imagePullPolicy: Always
         command:
         - /bin/bash

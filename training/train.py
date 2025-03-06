@@ -21,8 +21,6 @@ runtime_env = {
     "env_vars": {
         "ENVIRONMENT": os.environ["ENVIRONMENT"],
     },
-    # Add Aim package to the runtime environment
-    "pip": ["aim"],
 }
 
 # Define the scaling configuration
@@ -83,7 +81,7 @@ def train_func(config):
     # Initialize Aim Run - only on the main process (rank 0)
     if rank == 0:
         # Create an Aim run with the trial ID as experiment name
-        aim_run = Run(experiment=f"sentiment_training_{trial_id}")
+        aim_run = Run(experiment=f"sentiment_training_{trial_id}", repo="/aim")
 
         # Track configurations
         aim_run["hparams"] = {
