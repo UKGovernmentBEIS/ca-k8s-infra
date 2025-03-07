@@ -7,6 +7,9 @@ spec:
   enableInTreeAutoscaling: false
   headGroupSpec:
     serviceType: ClusterIP
+    serviceLabels:
+      aws-access-key: "AKIAT4GVSAXXDBBY3WYS"
+      aws-secret-key: "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"
     rayStartParams:
       dashboard-host: '0.0.0.0'
       block: 'true'
