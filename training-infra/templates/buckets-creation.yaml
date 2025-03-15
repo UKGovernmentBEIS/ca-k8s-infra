@@ -2,6 +2,10 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: internal-buckets
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   template:
     spec:
@@ -21,9 +25,15 @@ spec:
           mc mb myminio/datasets --ignore-existing
         env:
         - name: MINIO_ACCESS_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: username
         - name: MINIO_SECRET_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: password
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
       restartPolicy: Never
@@ -34,6 +44,10 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: external-buckets
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   template:
     spec:
@@ -49,7 +63,6 @@ spec:
             wget \
             curl
 
-
           # Install MinIO client
           wget https://dl.min.io/client/mc/release/linux-amd64/mc
           chmod +x mc
@@ -63,9 +76,15 @@ spec:
           mc mb myminio/datasets --ignore-existing
         env:
         - name: MINIO_ACCESS_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: username
         - name: MINIO_SECRET_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: password
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
       restartPolicy: Never

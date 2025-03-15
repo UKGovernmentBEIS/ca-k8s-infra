@@ -2,6 +2,10 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: stanfordnlp-imdb-dataset-sync
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "10"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   template:
     spec:
@@ -32,9 +36,15 @@ spec:
           rm -rf /tmp/dataset
         env:
         - name: MINIO_ACCESS_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: username
         - name: MINIO_SECRET_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: password
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
       restartPolicy: Never

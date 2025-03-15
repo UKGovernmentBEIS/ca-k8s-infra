@@ -1,4 +1,4 @@
-.PHONY: entrypoint install train deploy start_port_forward stop_port_forward
+.PHONY: entrypoint install train deploy start_port_forward stop_port_forward install-external-secrets
 
 ENVIRONMENT ?= dev-
 
@@ -9,12 +9,24 @@ make refresh:
 	@helm uninstall training-infra 
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 
-deploy:
+deploy: install-external-secrets
 	@echo "Deploying resources..."
 	@helm upgrade --install training-infra  ./training-infra --set environment=${ENVIRONMENT}
 	@echo "Waiting for jobs to complete..."
 	@kubectl get jobs -o name | xargs -I {} bash -c 'kubectl wait --for=condition=complete {} --timeout=300s || kubectl wait --for=condition=failed {} --timeout=300s'
 
+install-external-secrets:
+	@echo "Installing External Secrets Operator..."
+	@helm repo add external-secrets https://charts.external-secrets.io
+	@helm repo update
+	@echo "Installing external-secrets in environment namespace..."
+	@helm upgrade --install external-secrets-${ENVIRONMENT} external-secrets/external-secrets \
+		--namespace external-secrets-${ENVIRONMENT} \
+		--create-namespace \
+		--set extraEnv[0].name=AWS_SECRETSMANAGER_ENDPOINT \
+		--set extraEnv[0].value=http://aws.aws-agent-env-${ENVIRONMENT}.svc.cluster.local \
+		--wait
+	@echo "Installed External Secrets Operator"
 
 start_port_forward:
 	@echo "Starting port forwarding..."

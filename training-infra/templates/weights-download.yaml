@@ -32,9 +32,15 @@ spec:
           rm -rf /tmp/model
         env:
         - name: MINIO_ACCESS_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: username
         - name: MINIO_SECRET_KEY
-          value: "minioadmin"
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: password
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
       restartPolicy: Never
