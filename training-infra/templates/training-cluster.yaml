@@ -12,6 +12,7 @@ spec:
       block: 'true'
     template:
       spec:
+        runtimeClassName: gvisor
         containers:
           - name: ray-head
             # preloaded onto nodes
@@ -46,6 +47,7 @@ spec:
         block: 'true'
       template:
         spec:
+          runtimeClassName: gvisor
           containers:
             - name: ray-worker
               # preloaded onto nodes
@@ -68,3 +70,9 @@ spec:
           volumes:
             - name: ray-logs
               emptyDir: {}
+---
+kind: RuntimeClass
+apiVersion: node.k8s.io/v1
+metadata:
+  name: gvisor
+handler: runsc
