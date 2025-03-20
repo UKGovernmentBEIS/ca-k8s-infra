@@ -18,24 +18,32 @@ spec:
       labels:
         app: aim-deployment
     spec:
+      securityContext:
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
       containers:
-      - image: aimstack/aim:latest
-        name: aim-deployment
-        command: ["aim"]
-        args: ["up", "--repo", "/aim"]
-        ports:
-          - containerPort: 43800
-            protocol: TCP
-        resources:
-          limits:
-            cpu: 0.5
-            memory: 1Gi
-          requests:
-            cpu: 100m
-            memory: 1Gi
-        volumeMounts:
-          - mountPath: /aim
-            name: aim-runs
+        - image: aimstack/aim:3.27.0
+          name: aim-deployment
+          command: ["sh"]
+          args:
+            [
+              "-c",
+              'echo "N" | aim init --repo /aim && aim up --host 0.0.0.0 --port 43800 --workers 2 --repo /aim',
+            ]
+          ports:
+            - containerPort: 43800
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 0.5
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 1Gi
+          volumeMounts:
+            - mountPath: /aim
+              name: aim-runs
       volumes:
         - name: aim-runs
           persistentVolumeClaim:
