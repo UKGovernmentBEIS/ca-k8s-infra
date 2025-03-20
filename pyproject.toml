@@ -1,16 +1,16 @@
 [project]
-    dependencies = [
-        "ray[data,serve,train,tune]==2.42.1",
-        "transformers==4.49.0",
-        "datasets==3.3.1",
-        "torch==2.6.0+cpu",
-        "aim>=3.27.0",
+dependencies = [
+  "ray[data,serve,train,tune]==2.42.1",
+  "transformers==4.49.0",
+  "datasets==3.3.1",
+  "torch==2.6.0+cpu",
+  "aim==3.27.0",
 ]
-    description="Training framework"
-    name="training"
-    readme="README.md"
-    requires-python="==3.12.*"
-    version="0.1.0"
+description = "Training framework"
+name = "training"
+readme = "README.md"
+requires-python = "==3.12.*"
+version = "0.1.0"
 
 [tool.uv.sources]
 torch = { index = "pytorch" }
@@ -24,5 +24,5 @@ url = "https://download.pytorch.org/whl/cpu"
 
 
 [build-system]
-    requires = ["hatchling"]
-    build-backend = "hatchling.build"
+requires = ["hatchling"]
+build-backend = "hatchling.build"

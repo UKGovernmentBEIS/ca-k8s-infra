@@ -1430,7 +1430,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
-    { name = "aim", specifier = ">=3.27.0" },
+    { name = "aim", specifier = "==3.27.0" },
     { name = "datasets", specifier = "==3.3.1" },
     { name = "ray", extras = ["data", "serve", "train", "tune"], specifier = "==2.42.1" },
     { name = "torch", specifier = "==2.6.0+cpu", index = "https://download.pytorch.org/whl/cpu" },
