@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: fluentd
+  labels:
+    app: fluentd
+spec:
+  selector:
+    matchLabels:
+      app: fluentd
+  template:
+    metadata:
+      labels:
+        app: fluentd
+    spec:
+      containers:
+        - name: fluentd
+          image: fluent/fluentd:v1.15
+          volumeMounts:
+            - name: logs
+              mountPath: /var/log
+      volumes:
+        - name: logs
+          hostPath:
+            path: /var/log
