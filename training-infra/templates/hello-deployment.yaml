@@ -16,9 +16,6 @@ spec:
         - name: hello-container
           image: localhost:5001/hello:{{ .Values.environment }}
           imagePullPolicy: Always
-          args:
-            - "-listen=:8081"
-            - "-text=hello"
           ports:
             - containerPort: 8081
 ---
