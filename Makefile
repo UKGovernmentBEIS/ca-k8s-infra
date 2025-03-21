@@ -14,7 +14,7 @@ deploy:
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 	@echo "Waiting for jobs to complete..."
 	@kubectl get jobs -o name | xargs -I {} bash -c 'kubectl wait --for=condition=complete {} --timeout=300s || kubectl wait --for=condition=failed {} --timeout=300s'
-	@kubectl port-forward service/hello-service 8081:80 & echo $$! >> .hello_port_forward.pid
+
 
 wait_for_ray:
 	@echo "Waiting for Ray cluster head node to be ready..."
