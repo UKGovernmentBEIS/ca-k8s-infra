@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello
+  template:
+    metadata:
+      labels:
+        app: hello
+    spec:
+      containers:
+        - name: hello-container
+          image: hashicorp/http-echo:0.2.3
+          args:
+            - "-text=Hello World"
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-service
+spec:
+  selector:
+    app: hello
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080
