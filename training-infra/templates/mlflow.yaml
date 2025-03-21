@@ -30,7 +30,7 @@ spec:
     spec:
       containers:
       - name: mlflow
-        image: ghcr.io/mlflow/mlflow:v2.21.0
+        image: localhost:5001/mlflow:{{ .Values.environment }}
         ports:
         - containerPort: 5000
         env:
@@ -42,10 +42,15 @@ spec:
             value: minioadmin
           - name: AWS_SECRET_ACCESS_KEY
             value: minioadmin
-        command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "postgresql+psycopg2://postgres:postgres@db:5432/postgres", "--default-artifact-root", "s3://mlflow-artifacts"]
+        command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "postgresql+psycopg2://postgres:password@db:5432/postgres", "--default-artifact-root", "s3://mlflow-artifacts"]
       - name: db
         image: postgres:17.4
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: password
-          POSTGRES_DB: mlflow
+        ports:
+          - containerPort: 5432
+        env:
+          - name: POSTGRES_USER
+            value: postgres
+          - name: POSTGRES_PASSWORD
+            value: password
+          - name: POSTGRES_DB
+            value: mlflow

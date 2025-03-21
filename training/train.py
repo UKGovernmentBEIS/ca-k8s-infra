@@ -76,7 +76,7 @@ def train_func(config):
     rank = ray.train.get_context().get_world_rank()
 
     if rank == 0:
-        mlflow.set_tracking_uri("http://mlflow:5000")
+        mlflow.set_tracking_uri(f"http://mlflow.mlflow-{os.environ['ENVIRONMENT']}.svc.cluster.local:5000")
         mlflow.set_experiment("Sentiment_Model_Training")
         mlflow.start_run()
         mlflow.log_params(config)
