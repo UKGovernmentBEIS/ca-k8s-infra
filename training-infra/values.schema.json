@@ -1,18 +1,43 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "rayClusterName": {
-        "type": "string"
-      },
-      "environment": {
-        "type": "string"
-      }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "rayClusterName": {
+      "type": "string"
     },
-    "required": [
-      "rayClusterName",
-      "environment"
-    ],
-    "additionalProperties": false
-  }
-  
+    "environment": {
+      "type": "string"
+    },
+    "logging": {
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean" },
+        "elasticsearch": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" },
+            "replicas": { "type": "integer", "minimum": 1 }
+          },
+          "required": ["image", "replicas"]
+        },
+        "fluentd": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" }
+          },
+          "required": ["image"]
+        },
+        "kibana": {
+          "type": "object",
+          "properties": {
+            "image": { "type": "string" }
+          },
+          "required": ["image"]
+        }
+      },
+      "required": ["enabled", "elasticsearch", "fluentd", "kibana"]
+    }
+  },
+  "required": ["rayClusterName", "environment"],
+  "additionalProperties": false
+}

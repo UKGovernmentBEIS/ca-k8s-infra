@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: elasticsearch
+  namespace: observability-{{ .Values.environment }}
   labels:
     app: elasticsearch
 spec:
@@ -20,5 +21,12 @@ spec:
           env:
             - name: discovery.type
               value: "single-node"
+          resources:
+            requests:
+              memory: "2Gi"
+              cpu: "1"
+            limits:
+              memory: "3Gi"
+              cpu: "2"
           ports:
             - containerPort: 9200
