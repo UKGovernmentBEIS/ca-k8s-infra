@@ -16,7 +16,8 @@ spec:
         - name: hello-container
           image: hashicorp/http-echo:0.2.3
           args:
-            - "-listen=:8081 -text=hello"
+            - "-listen=:8081"
+            - "-text=hello"
           ports:
             - containerPort: 8081
 ---
