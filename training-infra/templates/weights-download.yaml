@@ -23,7 +23,7 @@ spec:
           mkdir -p /tmp/model
 
           # Download model from Hugging Face
-          huggingface-cli download EleutherAI/pythia-70m --local-dir /tmp/model --local-dir-use-symlinks False
+          huggingface-cli download roneneldan/TinyStories-1M --local-dir /tmp/model --local-dir-use-symlinks False
 
           # Upload to MinIO
           mc cp -r /tmp/model/ myminio/models/pythia-70m/
