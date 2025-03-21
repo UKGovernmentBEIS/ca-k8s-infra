@@ -1,0 +1,46 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mlflow
+spec:
+  ports:
+    - port: 5000
+      targetPort: 5000
+      protocol: TCP
+      name: mlflow
+  selector:
+    app: mlflow
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mlflow-tracking-deployment
+  labels:
+    app: mlflow-tracking-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mlflow
+  template:
+    metadata:
+      labels:
+        app: mlflow
+    spec:
+      containers:
+      - name: mlflow-tracking
+        image: ghcr.io/mlflow/mlflow:v2.21.0
+        ports:
+        - containerPort: 5000
+        env:
+          - name: MLFLOW_S3_ENDPOINT_URL
+            value: "http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000"
+          - name: MLFLOW_S3_IGNORE_TLS
+            value: "true"
+          - name: AWS_ACCESS_KEY_ID
+            value: minioadmin
+          - name: AWS_SECRET_ACCESS_KEY
+            value: minioadmin
+        #command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "postgresql+psycopg2://postgres:Password1234@postgres-service:5432/postgres", "--default-artifact-root", "s3://mlflow-artifacts"]
+        command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--default-artifact-root", "s3://mlflow-artifacts"]
