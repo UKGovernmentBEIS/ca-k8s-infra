@@ -3,6 +3,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mlflow
+  namespace: mlflow-{{ .Values.environment }}
 spec:
   ports:
     - port: 5000
@@ -15,9 +16,8 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mlflow-tracking-deployment
-  labels:
-    app: mlflow-tracking-deployment
+  name: mlflow-deployment
+  namespace: mlflow-{{ .Values.environment }}
 spec:
   replicas: 1
   selector:
@@ -29,7 +29,7 @@ spec:
         app: mlflow
     spec:
       containers:
-      - name: mlflow-tracking
+      - name: mlflow
         image: ghcr.io/mlflow/mlflow:v2.21.0
         ports:
         - containerPort: 5000
@@ -42,5 +42,10 @@ spec:
             value: minioadmin
           - name: AWS_SECRET_ACCESS_KEY
             value: minioadmin
-        #command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "postgresql+psycopg2://postgres:Password1234@postgres-service:5432/postgres", "--default-artifact-root", "s3://mlflow-artifacts"]
-        command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--default-artifact-root", "s3://mlflow-artifacts"]
+        command: ["mlflow", "server", "--host", "0.0.0.0", "--port", "5000", "--backend-store-uri", "postgresql+psycopg2://postgres:postgres@db:5432/postgres", "--default-artifact-root", "s3://mlflow-artifacts"]
+      - name: db
+        image: postgres:17.4
+        environment:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: mlflow
