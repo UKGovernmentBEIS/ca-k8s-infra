@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pythia-70m-model-sync
+  name: pythia-14m-model-sync
 spec:
   template:
     spec:
@@ -23,10 +23,10 @@ spec:
           mkdir -p /tmp/model
 
           # Download model from Hugging Face
-          huggingface-cli download roneneldan/TinyStories-1M --local-dir /tmp/model --local-dir-use-symlinks False
+          huggingface-cli download EleutherAI/pythia-14m --local-dir /tmp/model --local-dir-use-symlinks False
 
           # Upload to MinIO
-          mc cp -r /tmp/model/ myminio/models/pythia-70m/
+          mc cp -r /tmp/model/ myminio/models/pythia-14m/
 
           # Cleanup
           rm -rf /tmp/model
