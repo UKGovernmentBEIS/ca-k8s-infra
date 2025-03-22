@@ -23,3 +23,18 @@ spec:
               value: "single-node"
           ports:
             - containerPort: {{ .Values.elasticsearch.port }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: observability-{{ .Values.environment }}
+  labels:
+    app: elasticsearch
+spec:
+  ports:
+    - port: {{ .Values.elasticsearch.port }}
+      targetPort: {{ .Values.elasticsearch.port }}
+  selector:
+    app: elasticsearch
