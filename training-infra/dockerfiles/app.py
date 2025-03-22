@@ -3,36 +3,36 @@ import os
 
 app = Flask(__name__)
 
-# Archivo para almacenar los logs
+# File to store logs
 LOG_FILE = "logs.txt"
 
 @app.route('/')
 def hello():
-    return "¡Hola desde el servicio Hello!"
+    return "Hello from the Logging service!"
 
 @app.route('/write_log', methods=['POST'])
 def write_log():
     data = request.json
     if not data or 'message' not in data:
-        return jsonify({"error": "Se requiere un mensaje"}), 400
+        return jsonify({"error": "A message is required"}), 400
     
-    # Escribir la línea de log en el archivo
+    # Write the log line to the file
     with open(LOG_FILE, 'a') as f:
         f.write(f"{data['message']}\n")
     
-    return jsonify({"status": "success", "message": "Log escrito correctamente"})
+    return jsonify({"status": "success", "message": "Log written successfully"})
 
 @app.route('/read_logs', methods=['GET'])
 def read_logs():
-    # Verificar si el archivo existe
+    # Check if the file exists
     if not os.path.exists(LOG_FILE):
         return jsonify({"logs": []})
     
-    # Leer todas las líneas del archivo
+    # Read all lines from the file
     with open(LOG_FILE, 'r') as f:
         logs = f.readlines()
     
-    # Eliminar caracteres de nueva línea y espacios en blanco
+    # Remove newline characters and whitespace
     logs = [log.strip() for log in logs]
     
     return jsonify({"logs": logs})

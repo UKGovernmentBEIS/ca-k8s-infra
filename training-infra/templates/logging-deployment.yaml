@@ -1,20 +1,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: hello-deployment
+  name: logging-deployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: hello
+      app: logging
   template:
     metadata:
       labels:
-        app: hello
+        app: logging
     spec:
       containers:
-        - name: hello-container
-          image: localhost:5001/hello:{{ .Values.environment }}
+        - name: logging-container
+          image: localhost:5001/logging:{{ .Values.environment }}
           imagePullPolicy: Always
           ports:
             - containerPort: 8081
@@ -22,10 +22,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: hello-service
+  name: logging-service
 spec:
   selector:
-    app: hello
+    app: logging
   ports:
     - protocol: TCP
       port: 8081

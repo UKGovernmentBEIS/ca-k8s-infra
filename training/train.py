@@ -85,18 +85,18 @@ def train_func(config):
     )
     
     try:
-        hello_url_simple = "http://hello-service:8081"
-        response_simple = requests.get(hello_url_simple, timeout=5)
+        logging_url_simple = "http://logging-service:8081"
+        response_simple = requests.get(logging_url_simple, timeout=5)
         
-        # Escribir una línea de registro al servicio Hello
-        log_url = "http://hello-service:8081/write_log"
+        # Write a log line to the Logging service
+        log_url = "http://logging-service:8081/write_log"
         log_data = {"message": "Training job started"}
         log_response = requests.post(log_url, json=log_data, timeout=5)
-        print(f"Log sent to Hello service: {log_response.status_code}")
+        print(f"Log sent to Logging service: {log_response.status_code}")
         
-        print(f"Response from Hello service (simple URL): {response_simple.text}")
+        print(f"Response from Logging service (simple URL): {response_simple.text}")
     except Exception as e:
-        print(f"Error calling Hello service with simple URL: {e}")
+        print(f"Error calling Logging service with simple URL: {e}")
 
     # copy data to disk
     print("Copying data to disk")
