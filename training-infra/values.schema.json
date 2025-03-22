@@ -8,36 +8,21 @@
     "environment": {
       "type": "string"
     },
-    "logging": {
+    "elasticsearch": {
       "type": "object",
       "properties": {
-        "enabled": { "type": "boolean" },
-        "elasticsearch": {
-          "type": "object",
-          "properties": {
-            "image": { "type": "string" },
-            "replicas": { "type": "integer", "minimum": 1 }
-          },
-          "required": ["image", "replicas"]
-        },
-        "fluentd": {
-          "type": "object",
-          "properties": {
-            "image": { "type": "string" }
-          },
-          "required": ["image"]
-        },
-        "kibana": {
-          "type": "object",
-          "properties": {
-            "image": { "type": "string" }
-          },
-          "required": ["image"]
+        "port": {
+          "type": "integer",
+          "minimum": 1
         }
       },
-      "required": ["enabled", "elasticsearch", "fluentd", "kibana"]
+      "required": ["port"]
     }
   },
-  "required": ["rayClusterName", "environment"],
+  "required": [
+    "rayClusterName",
+    "environment",
+    "elasticsearch"
+  ],
   "additionalProperties": false
 }
