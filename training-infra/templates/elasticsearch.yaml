@@ -43,3 +43,11 @@ spec:
       targetPort: {{ .Values.elasticsearch.port }}
   selector:
     app: elasticsearch
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: observability-{{ .Values.environment }}
+  labels:
+    name:  observability-{{ .Values.environment }}
+---
