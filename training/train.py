@@ -34,7 +34,7 @@ train_config = {
     "model_location": "pythia-70m",  # This is the path in MinIO under the models bucket
     "batch_size": 2,
     "learning_rate": 5e-5,
-    "num_epochs": 1,
+    "num_epochs": 2,
     "max_iterations": 10,
 }
 
@@ -97,6 +97,20 @@ def train_func(config):
         print(f"Response from Logging service (simple URL): {response_simple.text}")
     except Exception as e:
         print(f"Error calling Logging service with simple URL: {e}")
+
+    # Helper function to send logs to the logging service
+    def send_log(message, log_data):
+        try:
+            log_url = "http://logging-service:8081/write_log"
+            timestamp = datetime.datetime.now().isoformat()
+            log_payload = {
+                "message": f"[{timestamp}] {message} - {log_data}"
+            }
+            response = requests.post(log_url, json=log_payload, timeout=5)
+            if response.status_code != 200:
+                print(f"Error sending log: {response.status_code}")
+        except Exception as e:
+            print(f"Error calling Logging service: {e}")
 
     # copy data to disk
     print("Copying data to disk")
@@ -187,9 +201,11 @@ def train_func(config):
         # Training loop
         model.train()
         epoch_loss = 0.0
+        batch_count = 0
         for epoch in range(config["num_epochs"]):
             epoch_loss = 0.0
-            for batch in train_loader:
+            batch_count = 0
+            for i, batch in enumerate(train_loader):
                 optimizer.zero_grad()
 
                 # Forward pass
@@ -198,24 +214,58 @@ def train_func(config):
                 loss.backward()
                 optimizer.step()
 
-                epoch_loss += loss.item()
+                batch_loss = loss.item()
+                epoch_loss += batch_loss
+                batch_count += 1
 
                 # Report metrics to Ray
-                ray.train.report({"training_loss": loss.item(), "epoch": epoch})
+                ray.train.report({"training_loss": batch_loss, "epoch": epoch})
+                
+
+                send_log(
+                    f"Training batch {i} in epoch {epoch}",
+                    {"loss": batch_loss, "epoch": epoch, "batch": i}
+                )
+
+            # Calculate average loss for the epoch
+            avg_epoch_loss = epoch_loss / batch_count
+            
+            # Log the epoch loss
+            send_log(
+                f"Epoch {epoch} completed",
+                {"avg_training_loss": avg_epoch_loss, "epoch": epoch}
+            )
 
             # Evaluate on test set
             model.eval()
             test_loss = 0.0
+            test_batch_count = 0
             with torch.no_grad():
                 for batch in test_loader:
                     outputs = model(**batch)
                     test_loss += outputs.loss.item()
+                    test_batch_count += 1
             model.train()
 
-            # Report test loss
-            ray.train.report(
-                {"test_loss": test_loss / len(test_loader), "epoch": epoch}
+            # Calculate average loss on test set
+            avg_test_loss = test_loss / test_batch_count
+            
+            # Log the test loss
+            send_log(
+                f"Evaluation for epoch {epoch} completed",
+                {"test_loss": avg_test_loss, "epoch": epoch}
             )
+
+            # Report test loss to Ray
+            ray.train.report(
+                {"test_loss": avg_test_loss, "epoch": epoch}
+            )
+
+        # Log the training completion
+        send_log(
+            "Training completed",
+            {"final_loss": epoch_loss / batch_count}
+        )
 
         # Save the model on the main process
         if rank == 0:
