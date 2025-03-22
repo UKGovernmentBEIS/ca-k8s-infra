@@ -6,6 +6,7 @@ from tempfile import TemporaryDirectory
 import pyarrow
 import ray
 import torch
+import requests
 from datasets import load_from_disk
 from pyarrow.fs import S3FileSystem
 from ray.train import RunConfig, ScalingConfig
@@ -81,6 +82,13 @@ def train_func(config):
         endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
         scheme="http",
     )
+    
+    try:
+        hello_url_simple = "http://hello-service:8081"
+        response_simple = requests.get(hello_url_simple, timeout=5)
+        print(f"Response from Hello service (simple URL): {response_simple.text}")
+    except Exception as e:
+        print(f"Error calling Hello service with simple URL: {e}")
 
     # copy data to disk
     print("Copying data to disk")
