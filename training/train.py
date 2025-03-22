@@ -222,6 +222,7 @@ def train_func(config):
             copy_dir_to_s3(fs, local_model_dir, checkpoint_path)
 
             mlflow.log_metrics(metrics)
+            mlflow.end_run()
 
     return metrics
 
