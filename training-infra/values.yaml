@@ -1,1 +1,3 @@
 rayClusterName: raycluster
+elasticsearch:
+  port: 9200

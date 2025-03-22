@@ -17,10 +17,3 @@ spec:
       containers:
         - name: fluentd
           image: fluent/fluentd:v1.15
-          volumeMounts:
-            - name: logs
-              mountPath: /var/log
-      volumes:
-        - name: logs
-          hostPath:
-            path: /var/log
