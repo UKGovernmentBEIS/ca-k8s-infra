@@ -21,6 +21,11 @@ spec:
           env:
             - name: discovery.type
               value: "single-node"
+          resources:
+            requests:
+              memory: "2Gi"
+            limits:
+              memory: "3Gi"
           ports:
             - containerPort: {{ .Values.elasticsearch.port }}
 
