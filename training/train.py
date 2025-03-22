@@ -83,20 +83,6 @@ def train_func(config):
         endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
         scheme="http",
     )
-    
-    try:
-        logging_url_simple = "http://logging-service:8081"
-        response_simple = requests.get(logging_url_simple, timeout=5)
-        
-        # Write a log line to the Logging service
-        log_url = "http://logging-service:8081/write_log"
-        log_data = {"message": "Training job started"}
-        log_response = requests.post(log_url, json=log_data, timeout=5)
-        print(f"Log sent to Logging service: {log_response.status_code}")
-        
-        print(f"Response from Logging service (simple URL): {response_simple.text}")
-    except Exception as e:
-        print(f"Error calling Logging service with simple URL: {e}")
 
     # Helper function to send logs to the logging service
     def send_log(message, log_data):
