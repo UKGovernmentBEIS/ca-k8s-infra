@@ -35,9 +35,9 @@ stop_port_forward:
 start_es_kibana_port_forward:
 	@echo "Starting Elasticsearch and Kibana port forwarding..."
 	# Port-forward Elasticsearch
-	@kubectl port-forward service/elasticsearch-${ENVIRONMENT} 9200:9200 & echo $$! >> .es_pid
+	@kubectl port-forward service/elasticsearch 9200:9200 & echo $$! >> .es_pid
 	# Port-forward Kibana
-	@kubectl port-forward service/kibana-${ENVIRONMENT} 5601:5601 & echo $$! >> .kibana_pid
+	@kubectl port-forward service/kibana 5601:5601 & echo $$! >> .kibana_pid
 
 stop_es_kibana_port_forward:
 	@echo "Stopping Elasticsearch and Kibana port forwarding..."

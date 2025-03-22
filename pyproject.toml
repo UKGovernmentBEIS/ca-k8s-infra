@@ -4,6 +4,8 @@
         "transformers==4.49.0",
         "datasets==3.3.1",
         "torch==2.6.0+cpu",
+        "elasticsearch==8.6.0"
+        
 ]
     description="Training framework"
     name="training"

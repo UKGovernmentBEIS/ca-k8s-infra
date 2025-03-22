@@ -3,7 +3,8 @@
   "type": "object",
   "properties": {
     "rayClusterName": {
-      "type": "string"
+      "type": "string",
+      "enum": ["raycluster"]
     },
     "environment": {
       "type": "string"
@@ -13,7 +14,19 @@
       "properties": {
         "port": {
           "type": "integer",
-          "minimum": 1
+          "minimum": 1,
+          "enum": [9200]
+        }
+      },
+      "required": ["port"]
+    },
+    "kibana": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "enum": [5601]
         }
       },
       "required": ["port"]
@@ -22,7 +35,8 @@
   "required": [
     "rayClusterName",
     "environment",
-    "elasticsearch"
+    "elasticsearch",
+    "kibana"
   ],
   "additionalProperties": false
 }

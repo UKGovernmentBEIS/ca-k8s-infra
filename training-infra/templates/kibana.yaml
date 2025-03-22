@@ -21,3 +21,17 @@ spec:
           env:
             - name: ELASTICSEARCH_HOSTS
               value: "http://elasticsearch:{{ .Values.elasticsearch.port }}"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: observability-{{ .Values.environment }}
+  labels:
+    app: kibana
+spec:
+  ports:
+    - port: {{ .Values.kibana.port }}
+      targetPort: {{ .Values.kibana.port }}
+  selector:
+    app: kibana

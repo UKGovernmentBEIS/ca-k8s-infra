@@ -1,3 +1,5 @@
 rayClusterName: raycluster
 elasticsearch:
   port: 9200
+kibana:
+  port: 5601

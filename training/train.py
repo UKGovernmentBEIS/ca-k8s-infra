@@ -2,6 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from elasticsearch import Elasticsearch
 
 import pyarrow
 import ray
@@ -230,6 +231,17 @@ if __name__ == "__main__":
             run_config=RunConfig(results_dir),
         )
 
+    #Logging something
+    namespace = os.getenv("POD_NAMESPACE")
+
+    es_namespace = namespace.replace("training", "observability")
+    es_host = f"elasticsearch.{es_namespace}.svc.cluster.local"
+    es_port = 9200
+
+    es = Elasticsearch([f"http://{es_host}:{es_port}"])
+
+    es.index(index="logs", document={"message": "Started training"})
+    
     # Start training
     try:
         results = trainer.fit()
