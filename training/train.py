@@ -2,6 +2,7 @@ import os
 import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
+import datetime
 
 import pyarrow
 import ray
@@ -86,6 +87,13 @@ def train_func(config):
     try:
         hello_url_simple = "http://hello-service:8081"
         response_simple = requests.get(hello_url_simple, timeout=5)
+        
+        # Escribir una línea de registro al servicio Hello
+        log_url = "http://hello-service:8081/write_log"
+        log_data = {"message": "Training job started"}
+        log_response = requests.post(log_url, json=log_data, timeout=5)
+        print(f"Log sent to Hello service: {log_response.status_code}")
+        
         print(f"Response from Hello service (simple URL): {response_simple.text}")
     except Exception as e:
         print(f"Error calling Hello service with simple URL: {e}")
