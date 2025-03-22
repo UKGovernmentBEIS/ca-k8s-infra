@@ -2,7 +2,7 @@
 
 ENVIRONMENT ?= agent-env-latest
 
-entrypoint: deploy train 
+entrypoint: deploy train stop_es_kibana_port_forward
 
 make refresh:
 	@echo "Refreshing resources..."
@@ -55,6 +55,6 @@ stop_es_kibana_port_forward:
 	fi
 
 train: start_port_forward start_es_kibana_port_forward
-	@trap 'make stop_port_forward stop_es_kibana_port_forward' EXIT 2 15; \
+	@trap 'make stop_port_forward' EXIT 2 15; \
 	echo "Training model..." && \
 	RAY_AIR_NEW_OUTPUT=0 uv run --active python training/train.py
