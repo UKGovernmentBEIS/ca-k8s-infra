@@ -184,6 +184,17 @@ def train_func(config):
         # Training setup
         optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
 
+        # Log training start with hyperparameters
+        send_log(
+            "Training started",
+            {
+                "batch_size": config["batch_size"],
+                "learning_rate": config["learning_rate"], 
+                "num_epochs": config["num_epochs"],
+                "max_iterations": config["max_iterations"]
+            }
+        )
+
         # Training loop
         model.train()
         epoch_loss = 0.0
