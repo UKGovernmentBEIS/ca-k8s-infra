@@ -2,12 +2,12 @@ import os
 import tempfile
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import datetime
+import requests
+from typing import Any, Optional
 
 import pyarrow
 import ray
 import torch
-import requests
 from datasets import load_from_disk
 from pyarrow.fs import S3FileSystem
 from ray.train import RunConfig, ScalingConfig
@@ -38,6 +38,22 @@ train_config = {
     "max_iterations": 10,
 }
 
+LOGGING_SERVICE_URL = "http://logging-service:8081"
+
+# Helper function to send logs to the logging service
+def write_log(message: str, log_data: Optional[dict[str, Any]] = None):
+    try:
+        log_payload = {
+            "message": message.strip(),
+            "log_data": log_data if log_data else {},
+            "run_id": ray.train.get_context().get_trial_id()
+        }
+        print("-->", log_payload)
+        response = requests.post(f"{LOGGING_SERVICE_URL}/logs", json=log_payload, timeout=5)
+        if response.status_code != 200:
+            print(f"Error sending log: {response.status_code}")
+    except Exception as e:
+        print(f"Error calling Logging service: {e}")
 
 # For copying from S3 to local:
 def copy_dir_from_s3(fs, source_path, target_path):
@@ -75,6 +91,14 @@ def copy_dir_to_s3(fs, source_path, target_path):
 def train_func(config):
     # Get the current worker's rank
     rank = ray.train.get_context().get_world_rank()
+    
+    # Add initial log at the start of training
+    write_log("Starting training process", {
+        "iteration": 0,
+        "epoch": 0,
+        "training_loss": None,
+        "test_loss": None
+    })
 
     # Initialize the S3 filesystem
     fs = S3FileSystem(
@@ -83,20 +107,6 @@ def train_func(config):
         endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
         scheme="http",
     )
-
-    # Helper function to send logs to the logging service
-    def send_log(message, log_data):
-        try:
-            log_url = "http://logging-service:8081/write_log"
-            timestamp = datetime.datetime.now().isoformat()
-            log_payload = {
-                "message": f"[{timestamp}] {message} - {log_data}"
-            }
-            response = requests.post(log_url, json=log_payload, timeout=5)
-            if response.status_code != 200:
-                print(f"Error sending log: {response.status_code}")
-        except Exception as e:
-            print(f"Error calling Logging service: {e}")
 
     # copy data to disk
     print("Copying data to disk")
@@ -184,24 +194,14 @@ def train_func(config):
         # Training setup
         optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
 
-        # Log training start with hyperparameters
-        send_log(
-            "Training started",
-            {
-                "batch_size": config["batch_size"],
-                "learning_rate": config["learning_rate"], 
-                "num_epochs": config["num_epochs"],
-                "max_iterations": config["max_iterations"]
-            }
-        )
-
         # Training loop
         model.train()
         epoch_loss = 0.0
-        batch_count = 0
+        iteration = 0
         for epoch in range(config["num_epochs"]):
             epoch_loss = 0.0
-            batch_count = 0
+            write_log(f"Starting epoch {epoch}", {"epoch": epoch, "iteration": iteration})
+            
             for i, batch in enumerate(train_loader):
                 optimizer.zero_grad()
 
@@ -211,58 +211,38 @@ def train_func(config):
                 loss.backward()
                 optimizer.step()
 
-                batch_loss = loss.item()
-                epoch_loss += batch_loss
-                batch_count += 1
+                epoch_loss += loss.item()
+                iteration += 1
 
                 # Report metrics to Ray
-                ray.train.report({"training_loss": batch_loss, "epoch": epoch})
-                
-
-                send_log(
-                    f"Training batch {i} in epoch {epoch}",
-                    {"loss": batch_loss, "epoch": epoch, "batch": i}
-                )
-
-            # Calculate average loss for the epoch
-            avg_epoch_loss = epoch_loss / batch_count
-            
-            # Log the epoch loss
-            send_log(
-                f"Epoch {epoch} completed",
-                {"avg_training_loss": avg_epoch_loss, "epoch": epoch}
-            )
+                ray.train.report({"training_loss": loss.item(), "epoch": epoch})
+                # Also send to logging service
+                write_log(f"Training iteration {iteration}", {
+                    "training_loss": loss.item(), 
+                    "epoch": epoch, 
+                    "iteration": iteration
+                })
 
             # Evaluate on test set
             model.eval()
             test_loss = 0.0
-            test_batch_count = 0
             with torch.no_grad():
                 for batch in test_loader:
                     outputs = model(**batch)
                     test_loss += outputs.loss.item()
-                    test_batch_count += 1
             model.train()
 
-            # Calculate average loss on test set
-            avg_test_loss = test_loss / test_batch_count
-            
-            # Log the test loss
-            send_log(
-                f"Evaluation for epoch {epoch} completed",
-                {"test_loss": avg_test_loss, "epoch": epoch}
-            )
-
-            # Report test loss to Ray
+            # Report test loss
             ray.train.report(
-                {"test_loss": avg_test_loss, "epoch": epoch}
+                {"test_loss": test_loss / len(test_loader), "epoch": epoch}
             )
-
-        # Log the training completion
-        send_log(
-            "Training completed",
-            {"final_loss": epoch_loss / batch_count}
-        )
+            
+            # Log evaluation results
+            write_log(f"Completed evaluation for epoch {epoch}", {
+                "test_loss": test_loss / len(test_loader),
+                "epoch": epoch,
+                "iteration": iteration,
+            })
 
         # Save the model on the main process
         if rank == 0:
@@ -276,6 +256,13 @@ def train_func(config):
             # Copy the saved model files back to S3
             checkpoint_path = f"models/checkpoints/sentiment_model/{ray.train.get_context().get_trial_id()}"
             copy_dir_to_s3(fs, local_model_dir, checkpoint_path)
+
+            # Update final log to include all metrics
+            write_log("Training completed", {
+                "final_loss": epoch_loss / len(train_loader),
+                "epoch": epoch,
+                "iteration": iteration
+            })
 
     return {"final_loss": epoch_loss / len(train_loader)}
 
