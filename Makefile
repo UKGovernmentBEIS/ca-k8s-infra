@@ -27,9 +27,6 @@ push_argocd_repo:
 	@git -C argocd remote add origin git://gitserver.gitserver-${ENVIRONMENT}.svc.cluster.local/example.git
 	@git -C argocd push -u origin master
 
-dump_namespace:
-	@kubectl config view --minify --output 'jsonpath={..namespace}'
-
 create_argocd_example_app:
 	@echo "Creating example app..."
 	@OLD_NAMESPACE=$$(kubectl config view --minify --output 'jsonpath={..namespace}'); \
