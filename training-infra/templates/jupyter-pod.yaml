@@ -100,9 +100,9 @@ spec:
         echo "Starting refresh script in the background"
         nohup /tmp/refresh_minio.sh > /tmp/notebooks/refresh_minio.log 2>&1 &
         
-        # Start Jupyter server
+        # Start Jupyter server and add authentication token for security
         cd /tmp/notebooks
-        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='' --NotebookApp.password=''
+        jupyter lab --ip=0.0.0.0 --port=8888 --no-browser --allow-root --NotebookApp.token='{{ .Values.jupyter.token }}'
     ports:
       - containerPort: 8888
         name: jupyter

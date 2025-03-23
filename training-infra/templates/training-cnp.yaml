@@ -28,6 +28,15 @@ spec:
         - ports:
             - port: "9000"
               protocol: TCP
+    # Allow traffic to minio-external
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-external-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
 
     # Allow DNS queries
     - toEndpoints:
