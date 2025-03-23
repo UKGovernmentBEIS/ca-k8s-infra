@@ -21,20 +21,22 @@ deploy_argocd:
 
 push_argocd_repo:
 	@echo "Pushing the argocd example repository to git..."
-	@git -C argocd init
+	@git -C argocd init -b master
 	@git -C argocd add .
 	@git -C argocd commit -m "Setup example app"
 	@git -C argocd remote add origin git://gitserver.gitserver-${ENVIRONMENT}.svc.cluster.local/example.git
-	@git -C argocd branch -M master
 	@git -C argocd push -u origin master
+
+dump_namespace:
+	@kubectl config view --minify --output 'jsonpath={..namespace}'
 
 create_argocd_example_app:
 	@echo "Creating example app..."
-	@OLD_NAMESPACE=$(kubectl config view --minify --output 'jsonpath={..namespace}')
-	@kubectl config set-context --current --namespace=argocd-${ENVIRONMENT}
-	@argocd cluster add in-cluster --namespace example-${ENVIRONMENT} --system-namespace argocd-${ENVIRONMENT} --in-cluster -y
-	@argocd app create example --repo git://gitserver.gitserver-${ENVIRONMENT}.svc.cluster.local/example.git --path example --dest-server https://kubernetes.default.svc --dest-namespace example-${ENVIRONMENT}
-	@kubectl config set-context --current --namespace="$OLD_NAMESPACE"
+	@OLD_NAMESPACE=$$(kubectl config view --minify --output 'jsonpath={..namespace}'); \
+	kubectl config set-context --current --namespace=argocd-${ENVIRONMENT}; \
+    argocd cluster add in-cluster --namespace example-${ENVIRONMENT} --system-namespace argocd-${ENVIRONMENT} --in-cluster -y; \
+	argocd app create example --repo git://gitserver.gitserver-${ENVIRONMENT}.svc.cluster.local/example.git --path example --dest-server https://kubernetes.default.svc --dest-namespace example-${ENVIRONMENT} --sync-policy automated; \
+	kubectl config set-context --current --namespace="$$OLD_NAMESPACE"
 
 deploy:
 	@echo "Deploying resources..."
