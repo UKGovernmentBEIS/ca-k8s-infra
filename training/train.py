@@ -92,13 +92,7 @@ def train_func(config):
     # Get the current worker's rank
     rank = ray.train.get_context().get_world_rank()
     
-    # Add initial log at the start of training
-    write_log("Starting training process", {
-        "iteration": 0,
-        "epoch": 0,
-        "training_loss": None,
-        "test_loss": None
-    })
+    write_log("Starting training process")
 
     # Initialize the S3 filesystem
     fs = S3FileSystem(
@@ -197,10 +191,9 @@ def train_func(config):
         # Training loop
         model.train()
         epoch_loss = 0.0
-        iteration = 0
         for epoch in range(config["num_epochs"]):
             epoch_loss = 0.0
-            write_log(f"Starting epoch {epoch}", {"epoch": epoch, "iteration": iteration})
+            write_log(f"Starting epoch {epoch}", {"epoch": epoch})
             
             for i, batch in enumerate(train_loader):
                 optimizer.zero_grad()
@@ -212,15 +205,14 @@ def train_func(config):
                 optimizer.step()
 
                 epoch_loss += loss.item()
-                iteration += 1
 
                 # Report metrics to Ray
                 ray.train.report({"training_loss": loss.item(), "epoch": epoch})
                 # Also send to logging service
-                write_log(f"Training iteration {iteration}", {
+                write_log(f"Training iteration {i}", {
                     "training_loss": loss.item(), 
                     "epoch": epoch, 
-                    "iteration": iteration
+                    "iteration": i
                 })
 
             # Evaluate on test set
@@ -240,8 +232,7 @@ def train_func(config):
             # Log evaluation results
             write_log(f"Completed evaluation for epoch {epoch}", {
                 "test_loss": test_loss / len(test_loader),
-                "epoch": epoch,
-                "iteration": iteration,
+                "epoch": epoch
             })
 
         # Save the model on the main process
@@ -257,11 +248,8 @@ def train_func(config):
             checkpoint_path = f"models/checkpoints/sentiment_model/{ray.train.get_context().get_trial_id()}"
             copy_dir_to_s3(fs, local_model_dir, checkpoint_path)
 
-            # Update final log to include all metrics
             write_log("Training completed", {
-                "final_loss": epoch_loss / len(train_loader),
-                "epoch": epoch,
-                "iteration": iteration
+                "final_loss": epoch_loss / len(train_loader)
             })
 
     return {"final_loss": epoch_loss / len(train_loader)}
