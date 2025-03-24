@@ -5,6 +5,7 @@ metadata:
 spec:
   template:
     spec:
+      runtimeClassName: gvisor
       containers:
       - name: internal-buckets
         image: localhost:5001/job:{{ .Values.environment }}
@@ -37,6 +38,7 @@ metadata:
 spec:
   template:
     spec:
+      runtimeClassName: gvisor
       containers:
       - name: external-buckets
         image: ubuntu:20.04

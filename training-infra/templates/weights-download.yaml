@@ -5,6 +5,7 @@ metadata:
 spec:
   template:
     spec:
+      runtimeClassName: gvisor
       containers:
       - name: model-sync
         image: localhost:5001/job:{{ .Values.environment }}
