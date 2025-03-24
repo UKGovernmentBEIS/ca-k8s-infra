@@ -221,31 +221,6 @@ wheels = [
 ]
 
 [[package]]
-name = "elastic-transport"
-version = "8.17.1"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "certifi" },
-    { name = "urllib3" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/6a/54/d498a766ac8fa475f931da85a154666cc81a70f8eb4a780bc8e4e934e9ac/elastic_transport-8.17.1.tar.gz", hash = "sha256:5edef32ac864dca8e2f0a613ef63491ee8d6b8cfb52881fa7313ba9290cac6d2", size = 73425 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/cf/cd/b71d5bc74cde7fc6fd9b2ff9389890f45d9762cbbbf81dc5e51fd7588c4a/elastic_transport-8.17.1-py3-none-any.whl", hash = "sha256:192718f498f1d10c5e9aa8b9cf32aed405e469a7f0e9d6a8923431dbb2c59fb8", size = 64969 },
-]
-
-[[package]]
-name = "elasticsearch"
-version = "8.6.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "elastic-transport" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/9c/e0/5f9ccbea5e48176e22b56a381c5f63b6ca9a32f6fbd6e0d0ce95cf38dfbf/elasticsearch-8.6.0.tar.gz", hash = "sha256:70f6da78878c5df28cd4a4b902a57192a86b0306e69bc08177a14dac9759db59", size = 305696 }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/31/9d/a63da0005d01e0ae32a7b32a9ccc42147b65f521aeeb48fb918f9c775aac/elasticsearch-8.6.0-py3-none-any.whl", hash = "sha256:9d2c1010bda4699c202be82cb960aee3fb9359ca98bb83dfa7db06679212e9a7", size = 385353 },
-]
-
-[[package]]
 name = "fastapi"
 version = "0.115.8"
 source = { registry = "https://pypi.org/simple" }
@@ -1140,7 +1115,6 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "datasets" },
-    { name = "elasticsearch" },
     { name = "ray", extra = ["data", "serve", "train", "tune"] },
     { name = "torch" },
     { name = "transformers" },
@@ -1149,7 +1123,6 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "datasets", specifier = "==3.3.1" },
-    { name = "elasticsearch", specifier = "==8.6.0" },
     { name = "ray", extras = ["data", "serve", "train", "tune"], specifier = "==2.42.1" },
     { name = "torch", specifier = "==2.6.0+cpu", index = "https://download.pytorch.org/whl/cpu" },
     { name = "transformers", specifier = "==4.49.0" },
