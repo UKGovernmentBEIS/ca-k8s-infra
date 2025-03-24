@@ -29,6 +29,16 @@ spec:
             - port: "9000"
               protocol: TCP
 
+    # Allow traffic to mlflow
+    - toEndpoints:
+        - matchLabels:
+            app: mlflow
+            k8s:io.kubernetes.pod.namespace: training-agent-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "5000"
+              protocol: TCP
+
     # Allow DNS queries
     - toEndpoints:
         - matchLabels:
