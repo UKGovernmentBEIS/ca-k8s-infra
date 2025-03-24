@@ -5,6 +5,15 @@
       "rayClusterName": {
         "type": "string"
       },
+      "jupyter": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string"
+          }
+        },
+        "required": ["token"]
+      },
       "environment": {
         "type": "string"
       }
