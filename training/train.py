@@ -20,6 +20,10 @@ runtime_env = {
     }
 }
 
+# Define the MinIO configuration, this is currently set for debugging and will use proper secrets in production
+MINIO_ACCESS_KEY = "minioadmin"
+MINIO_SECRET_KEY = "minioadmin"
+
 # Define the scaling configuration
 scaling_config = ScalingConfig(
     num_workers=2,
@@ -76,8 +80,8 @@ def train_func(config):
 
     # Initialize the S3 filesystem
     fs = S3FileSystem(
-        access_key="minioadmin",
-        secret_key="minioadmin",  # noqa
+        access_key=MINIO_ACCESS_KEY,
+        secret_key=MINIO_SECRET_KEY,
         endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
         scheme="http",
     )
