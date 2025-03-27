@@ -1,18 +1,74 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "rayClusterName": {
-        "type": "string"
-      },
-      "environment": {
-        "type": "string"
-      }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "rayClusterName": {
+      "type": "string"
     },
-    "required": [
-      "rayClusterName",
-      "environment"
-    ],
-    "additionalProperties": false
-  }
-  
+    "environment": {
+      "type": "string"
+    },
+    "collector": {
+      "type": "object",
+      "properties": {
+        "image": {
+          "type": "object",
+          "properties": {
+            "repository": {
+              "type": "string"
+            },
+            "tag": {
+              "type": "string"
+            }
+          },
+          "required": ["repository", "tag"],
+          "additionalProperties": false
+        },
+        "resources": {
+          "type": "object",
+          "properties": {
+            "requests": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "type": "string"
+                }
+              },
+              "required": ["memory"],
+              "additionalProperties": false
+            },
+            "limits": {
+              "type": "object",
+              "properties": {
+                "memory": {
+                  "type": "string"
+                }
+              },
+              "required": ["memory"],
+              "additionalProperties": false
+            }
+          },
+          "required": ["requests", "limits"],
+          "additionalProperties": false
+        },
+        "ports": {
+          "type": "object",
+          "properties": {
+            "otlpGrpc": {
+              "type": "integer"
+            },
+            "otlpHttp": {
+              "type": "integer"
+            }
+          },
+          "required": ["otlpGrpc", "otlpHttp"],
+          "additionalProperties": false
+        }
+      },
+      "required": ["image", "resources", "ports"],
+      "additionalProperties": false
+    }
+  },
+  "required": ["rayClusterName", "environment", "collector"],
+  "additionalProperties": false
+}
