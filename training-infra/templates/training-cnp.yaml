@@ -29,6 +29,16 @@ spec:
             - port: "9000"
               protocol: TCP
 
+    # Allow traffic to elasticsearch
+    - toEndpoints:
+        - matchLabels:
+            app: elasticsearch
+            k8s:io.kubernetes.pod.namespace: observability-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "9200"
+              protocol: TCP
+
     # Allow DNS queries
     - toEndpoints:
         - matchLabels:

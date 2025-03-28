@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  namespace: observability-{{ .Values.environment }}
+  labels:
+    app: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+    spec:
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:7.17.3
+          env:
+            - name: discovery.type
+              value: "single-node"
+          resources:
+            requests:
+              memory: "2Gi"
+            limits:
+              memory: "3Gi"
+          ports:
+            - containerPort: {{ .Values.elasticsearch.port }}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: observability-{{ .Values.environment }}
+  labels:
+    app: elasticsearch
+spec:
+  ports:
+    - port: {{ .Values.elasticsearch.port }}
+      targetPort: {{ .Values.elasticsearch.port }}
+  selector:
+    app: elasticsearch
+

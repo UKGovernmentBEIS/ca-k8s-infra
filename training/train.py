@@ -7,6 +7,7 @@ import pyarrow
 import ray
 import torch
 from datasets import load_from_disk
+from elasticsearch import Elasticsearch
 from pyarrow.fs import S3FileSystem
 from ray.train import RunConfig, ScalingConfig
 from ray.train.torch import TorchTrainer, prepare_data_loader, prepare_model
@@ -73,6 +74,14 @@ def copy_dir_to_s3(fs, source_path, target_path):
 def train_func(config):
     # Get the current worker's rank
     rank = ray.train.get_context().get_world_rank()
+
+    es = Elasticsearch(
+        [
+            f"http://elasticsearch.observability-{os.environ['ENVIRONMENT']}.svc.cluster.local:9200"
+        ]
+    )
+
+    es.index(index="logs", document={"message": "Started training model"})
 
     # Initialize the S3 filesystem
     fs = S3FileSystem(
@@ -229,6 +238,11 @@ if __name__ == "__main__":
             scaling_config=scaling_config,
             run_config=RunConfig(results_dir),
         )
+
+    # Logging something
+    es = Elasticsearch([f"http://localhost:9200"])
+
+    es.index(index="logs", document={"message": "Started training"})
 
     # Start training
     try:

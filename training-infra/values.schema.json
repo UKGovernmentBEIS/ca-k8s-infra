@@ -1,18 +1,42 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "rayClusterName": {
-        "type": "string"
-      },
-      "environment": {
-        "type": "string"
-      }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "rayClusterName": {
+      "type": "string",
+      "enum": ["raycluster"]
     },
-    "required": [
-      "rayClusterName",
-      "environment"
-    ],
-    "additionalProperties": false
-  }
-  
+    "environment": {
+      "type": "string"
+    },
+    "elasticsearch": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "enum": [9200]
+        }
+      },
+      "required": ["port"]
+    },
+    "kibana": {
+      "type": "object",
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "enum": [5601]
+        }
+      },
+      "required": ["port"]
+    }
+  },
+  "required": [
+    "rayClusterName",
+    "environment",
+    "elasticsearch",
+    "kibana"
+  ],
+  "additionalProperties": false
+}
