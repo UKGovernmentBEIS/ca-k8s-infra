@@ -1,0 +1,45 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-alpha-role
+  namespace: team-alpha-{{ .Values.environment }}
+rules:
+# Ray job management permissions - restricted to team's jobs
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["create"]  # Allow creation of any Ray job
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["get", "list", "update", "delete"]
+  resourceNames: ["*-alpha-*"]  # Only manage/view jobs with alpha in the name
+# Pod viewing permissions
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]  # Can view pods but not modify them
+# Access to Ray Cluster limited to viewing
+- apiGroups: ["ray.io"]
+  resources: ["rayclusters"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: team-beta-role
+  namespace: team-beta-{{ .Values.environment }}
+rules:
+# Ray job management permissions - restricted to team's jobs
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["create"]  # Allow creation of any Ray job
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["get", "list", "update", "delete"]
+  resourceNames: ["*-beta-*"]  # Only manage/view jobs with beta in the name
+# Pod viewing permissions
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list"]  # Can view pods but not modify them
+# Access to Ray Cluster limited to viewing
+- apiGroups: ["ray.io"]
+  resources: ["rayclusters"]
+  verbs: ["get", "list"]
