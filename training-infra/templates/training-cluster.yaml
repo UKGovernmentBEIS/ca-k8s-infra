@@ -12,6 +12,8 @@ spec:
       block: 'true'
     template:
       spec:
+        securityContext:
+          fsGroup: 0
         containers:
           - name: ray-head
             # This image will be built from the training.Dockerfile 
@@ -51,6 +53,8 @@ spec:
         block: 'true'
       template:
         spec:
+          securityContext:
+            fsGroup: 0
           containers:
             - name: ray-worker
               # preloaded onto nodes

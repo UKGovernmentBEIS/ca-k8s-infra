@@ -32,7 +32,7 @@ scaling_config = ScalingConfig(
 
 # Training configuration
 train_config = {
-    "model_location": "pythia-70m",  # This is the path in MinIO under the models bucket
+    "model_location": "model-small",  # This is the path in MinIO under the models bucket
     "batch_size": 2,
     "learning_rate": 5e-5,
     "num_epochs": 1,
@@ -275,22 +275,21 @@ def train_func(config):
     return {"final_loss": epoch_loss / len(train_loader), "global_step": global_step}
 
 
-# Run `make ray_port_forward` ahead of this to make the ray cluster accessible
-ray.init(address="ray://localhost:10001", runtime_env=runtime_env)
+if __name__ == "__main__":
+    # Run `make ray_port_forward` ahead of this to make the ray cluster accessible
+    ray.init(address="ray://localhost:10001", runtime_env=runtime_env)
 
+    with TemporaryDirectory() as results_dir:
+        # Create the trainer
+        trainer = TorchTrainer(
+            train_func,
+            train_loop_config=train_config,
+            scaling_config=scaling_config,
+            run_config=RunConfig(results_dir),
+        )
 
-with TemporaryDirectory() as results_dir:
-    # Create the trainer
-    trainer = TorchTrainer(
-        train_func,
-        train_loop_config=train_config,
-        scaling_config=scaling_config,
-        run_config=RunConfig(results_dir),
-    )
-
-# Start training
-try:
-    results = trainer.fit()
-    print(f"Training completed with results: {results}")
-finally:
-    ray.shutdown()
+    # Start training
+    try:
+        results = trainer.fit()
+    finally:
+        ray.shutdown()

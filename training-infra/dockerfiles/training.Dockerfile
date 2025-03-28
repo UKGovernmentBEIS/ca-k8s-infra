@@ -1,4 +1,5 @@
 FROM rayproject/ray:2.42.1-py312-cpu
+USER root
 
 # Set environment variables
 ENV PIP_NO_CACHE_DIR=true
@@ -9,3 +10,5 @@ RUN pip install torch==2.6.0+cpu --index-url https://download.pytorch.org/whl/cp
     datasets==3.3.1 \
     aim==3.27.0 \
     && rm -rf ~/.cache/pip
+
+RUN pip install aim==3.27.0 && rm -rf ~/.cache/pip

@@ -19,10 +19,10 @@ spec:
         app: aim-deployment
     spec:
       containers:
-      - image: aimstack/aim:latest
+      - image: aimstack/aim:3.27.0
         name: aim-deployment
-        command: ["aim"]
-        args: ["up", "--repo", "/aim"]
+        command: [ "/bin/sh", "-c" ]
+        args: [ "aim init --repo /aim && chmod -R a+w /aim && aim up --repo /aim" ]
         ports:
           - containerPort: 43800
             protocol: TCP
