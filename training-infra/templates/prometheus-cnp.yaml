@@ -1,0 +1,32 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: prometheus-network-policy
+  namespace: prometheus-{{ .Values.environment }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app: prometheus
+  
+  egress:
+    # Allow traffic to Ray cluster for scraping metrics
+    - toEndpoints:
+        - matchLabels:
+            ray.io/cluster: {{ .Values.rayClusterName }}-{{ .Values.environment }}
+            k8s:io.kubernetes.pod.namespace: training-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "8265"  # Ray dashboard port
+              protocol: TCP
+    
+    # Allow DNS queries
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
