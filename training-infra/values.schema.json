@@ -1,18 +1,74 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "rayClusterName": {
-        "type": "string"
-      },
-      "environment": {
-        "type": "string"
-      }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "rayClusterName": {
+      "type": "string"
     },
-    "required": [
-      "rayClusterName",
-      "environment"
-    ],
-    "additionalProperties": false
-  }
-  
+    "environment": {
+      "type": "string"
+    },
+    "keda": {
+      "type": "object",
+      "description": "KEDA autoscaling configuration for Ray cluster",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable KEDA autoscaling",
+          "default": true
+        },
+        "minReplicas": {
+          "type": "integer",
+          "description": "Minimum number of worker replicas",
+          "minimum": 0,
+          "default": 1
+        },
+        "maxReplicas": {
+          "type": "integer",
+          "description": "Maximum number of worker replicas",
+          "minimum": 1,
+          "default": 3
+        },
+        "pollingInterval": {
+          "type": "integer",
+          "description": "Interval (in seconds) to check metrics",
+          "minimum": 1,
+          "default": 15
+        },
+        "cooldownPeriod": {
+          "type": "integer",
+          "description": "Period (in seconds) to wait before scaling down",
+          "minimum": 1,
+          "default": 300
+        },
+        "memoryThreshold": {
+          "type": "string",
+          "description": "Memory usage percentage threshold for scaling",
+          "default": "80"
+        },
+        "prometheus": {
+          "type": "object",
+          "description": "Prometheus configuration for KEDA",
+          "properties": {
+            "serverAddress": {
+              "type": "string",
+              "description": "Prometheus server address",
+              "default": "http://prometheus-server.monitoring.svc.cluster.local:9090"
+            },
+            "memoryQuery": {
+              "type": "string",
+              "description": "Prometheus query for memory usage metrics"
+            }
+          },
+          "required": ["serverAddress", "memoryQuery"]
+        }
+      },
+      "required": ["enabled", "prometheus"]
+    }
+  },
+  "required": [
+    "rayClusterName",
+    "environment"
+  ],
+  "additionalProperties": false
+}

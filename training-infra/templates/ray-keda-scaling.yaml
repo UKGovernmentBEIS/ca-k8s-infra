@@ -1,0 +1,30 @@
+{{- if .Values.keda.enabled }}
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: {{ .Values.rayClusterName }}-{{ .Values.environment }}-memory-scaler
+  namespace: {{ .Release.Namespace }}
+spec:
+  scaleTargetRef:
+    apiVersion: ray.io/v1
+    kind: RayCluster
+    name: {{ .Values.rayClusterName }}-{{ .Values.environment }}
+    envSourceContainerName: ray-worker
+  scaleTargetRef.containerName: ray-worker
+  minReplicaCount: {{ .Values.keda.minReplicas | default 1 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas | default 3 }}
+  pollingInterval: {{ .Values.keda.pollingInterval | default 15 }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod | default 300 }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 300
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: {{ .Values.keda.prometheus.serverAddress }}
+      metricName: ray_memory_usage
+      threshold: "{{ .Values.keda.memoryThreshold | default 80 }}"
+      query: {{ .Values.keda.prometheus.memoryQuery }}
+{{- end }}

@@ -1,1 +1,13 @@
 rayClusterName: raycluster
+keda:
+  enabled: true
+  minReplicas: 1  # This should match or be lower than the minReplicas in your RayCluster spec
+  maxReplicas: 3  # This should match or be higher than the maxReplicas in your RayCluster spec
+  pollingInterval: 15
+  cooldownPeriod: 300
+  memoryThreshold: "80"
+  prometheus:
+    serverAddress: http://prometheus-server.monitoring.svc.cluster.local:9090
+    memoryQuery: >
+      avg(container_memory_usage_bytes{namespace="${namespace}", pod=~"{{ .Values.rayClusterName }}-{{ .Values.environment }}-small-group.*"}) / 
+      sum(container_memory_limits_bytes{namespace="${namespace}", pod=~"{{ .Values.rayClusterName }}-{{ .Values.environment }}-small-group.*"}) * 100
