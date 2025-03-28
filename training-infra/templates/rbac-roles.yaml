@@ -7,11 +7,8 @@ rules:
 # Ray job management permissions - restricted to team's jobs
 - apiGroups: ["ray.io"]
   resources: ["rayjobs"]
-  verbs: ["create"]  # Allow creation of any Ray job
-- apiGroups: ["ray.io"]
-  resources: ["rayjobs"]
-  verbs: ["get", "list", "update", "delete"]
-  resourceNames: ["*-alpha-*"]  # Only manage/view jobs with alpha in the name
+  verbs: ["get", "list", "update", "delete", "create"]
+  resourceNames: ["*alpha*"]  # Only manage/view jobs with alpha in the name
 # Pod viewing permissions
 - apiGroups: [""]
   resources: ["pods"]
@@ -30,11 +27,8 @@ rules:
 # Ray job management permissions - restricted to team's jobs
 - apiGroups: ["ray.io"]
   resources: ["rayjobs"]
-  verbs: ["create"]  # Allow creation of any Ray job
-- apiGroups: ["ray.io"]
-  resources: ["rayjobs"]
-  verbs: ["get", "list", "update", "delete"]
-  resourceNames: ["*-beta-*"]  # Only manage/view jobs with beta in the name
+  verbs: ["get", "list", "update", "delete", "create"]
+  resourceNames: ["*beta*"]  # Only manage/view jobs with beta in the name
 # Pod viewing permissions
 - apiGroups: [""]
   resources: ["pods"]

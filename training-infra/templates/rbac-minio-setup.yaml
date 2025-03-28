@@ -22,19 +22,20 @@ spec:
           mc mb myminio/models/team-alpha --ignore-existing
           mc mb myminio/models/team-beta --ignore-existing
           
-          # Create policy files for Team Alpha
+          # Create policy file for team-alpha
           cat > /tmp/team-alpha-policy.json << EOF
           {
             "Version": "2012-10-17",
             "Statement": [
               {
-                "Effect": "Allow",
                 "Action": ["s3:ListBucket"],
-                "Resource": ["arn:aws:s3:::datasets", "arn:aws:s3:::models"]
+                "Effect": "Allow",
+                "Resource": ["arn:aws:s3:::datasets", "arn:aws:s3:::models"],
+                "Condition": {"StringLike": {"s3:prefix": ["team-alpha/*"]}}
               },
               {
-                "Effect": "Allow",
                 "Action": ["s3:*"],
+                "Effect": "Allow",
                 "Resource": [
                   "arn:aws:s3:::datasets/team-alpha/*",
                   "arn:aws:s3:::models/team-alpha/*"
@@ -44,19 +45,20 @@ spec:
           }
           EOF
           
-          # Create policy files for Team Beta
+          # Create policy file for team-beta
           cat > /tmp/team-beta-policy.json << EOF
           {
             "Version": "2012-10-17",
             "Statement": [
               {
-                "Effect": "Allow",
                 "Action": ["s3:ListBucket"],
-                "Resource": ["arn:aws:s3:::datasets", "arn:aws:s3:::models"]
+                "Effect": "Allow",
+                "Resource": ["arn:aws:s3:::datasets", "arn:aws:s3:::models"],
+                "Condition": {"StringLike": {"s3:prefix": ["team-beta/*"]}}
               },
               {
-                "Effect": "Allow",
                 "Action": ["s3:*"],
+                "Effect": "Allow",
                 "Resource": [
                   "arn:aws:s3:::datasets/team-beta/*",
                   "arn:aws:s3:::models/team-beta/*"
@@ -66,17 +68,17 @@ spec:
           }
           EOF
           
-          # Add policies to MinIO
-          mc admin policy add myminio team-alpha-policy /tmp/team-alpha-policy.json
-          mc admin policy add myminio team-beta-policy /tmp/team-beta-policy.json
+          # Create policies in MinIO
+          mc admin policy create myminio team-alpha-policy /tmp/team-alpha-policy.json
+          mc admin policy create myminio team-beta-policy /tmp/team-beta-policy.json
           
           # Create MinIO users for each team
           mc admin user add myminio team-alpha team-alpha-password
           mc admin user add myminio team-beta team-beta-password
           
           # Assign policies to users
-          mc admin policy set myminio team-alpha-policy user=team-alpha
-          mc admin policy set myminio team-beta-policy user=team-beta
+          mc admin policy attach myminio team-alpha-policy --user team-alpha
+          mc admin policy attach myminio team-beta-policy --user team-beta
           
           echo "MinIO RBAC setup complete"
         env:
