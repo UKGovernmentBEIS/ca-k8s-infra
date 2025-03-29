@@ -15,13 +15,13 @@ spec:
         - |
           # Configure MinIO client
           mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-          
+
           # Create team directories in the buckets
           mc mb myminio/datasets/team-alpha --ignore-existing
           mc mb myminio/datasets/team-beta --ignore-existing
           mc mb myminio/models/team-alpha --ignore-existing
           mc mb myminio/models/team-beta --ignore-existing
-          
+
           # Create policy file for team-alpha
           cat > /tmp/team-alpha-policy.json << EOF
           {
@@ -44,7 +44,7 @@ spec:
             ]
           }
           EOF
-          
+
           # Create policy file for team-beta
           cat > /tmp/team-beta-policy.json << EOF
           {
@@ -67,19 +67,19 @@ spec:
             ]
           }
           EOF
-          
+
           # Create policies in MinIO
           mc admin policy create myminio team-alpha-policy /tmp/team-alpha-policy.json
           mc admin policy create myminio team-beta-policy /tmp/team-beta-policy.json
-          
+
           # Create MinIO users for each team
           mc admin user add myminio team-alpha team-alpha-password
           mc admin user add myminio team-beta team-beta-password
-          
+
           # Assign policies to users
           mc admin policy attach myminio team-alpha-policy --user team-alpha
           mc admin policy attach myminio team-beta-policy --user team-beta
-          
+
           echo "MinIO RBAC setup complete"
         env:
         - name: MINIO_ACCESS_KEY
@@ -90,4 +90,4 @@ spec:
           value: {{ .Values.environment }}
       restartPolicy: Never
   backoffLimit: 4
-  activeDeadlineSeconds: 300 
+  activeDeadlineSeconds: 300
