@@ -3,4 +3,4 @@ kind: Namespace
 metadata:
   name: test-namespace-{{ .Values.environment }}
   labels:
-    purpose: development
+    purpose: development-{{ .Values.environment }}
