@@ -45,38 +45,22 @@ spec:
         - -c
         - |
           # Install required packages
-          apt-get update -y && apt-get install -y \
+          apt-get update && apt-get install -y \
             wget \
-            curl \
-            ca-certificates \
-            --no-install-recommends
+            curl
+
 
           # Install MinIO client
           wget https://dl.min.io/client/mc/release/linux-amd64/mc
           chmod +x mc
           mv mc /usr/local/bin/
 
-          # Configure MinIO client with retries
-          max_retries=10
-          retry_count=0
-          while [ $retry_count -lt $max_retries ]; do
-            if mc alias set myminio http://minio.minio-external-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY; then
-              echo "Successfully connected to MinIO"
-              break
-            fi
-            retry_count=$((retry_count+1))
-            echo "Failed to connect to MinIO, retrying in 5s (attempt $retry_count/$max_retries)"
-            sleep 5
-          done
-          
-          if [ $retry_count -eq $max_retries ]; then
-            echo "Failed to connect to MinIO after $max_retries attempts"
-            exit 1
-          fi
+          # Configure MinIO client
+          mc alias set myminio http://minio.minio-external-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
           # Create bucket if it doesn't exist
-          mc mb myminio/models --ignore-existing || echo "Failed to create models bucket, may already exist"
-          mc mb myminio/datasets --ignore-existing || echo "Failed to create datasets bucket, may already exist"
+          mc mb myminio/models --ignore-existing
+          mc mb myminio/datasets --ignore-existing
         env:
         - name: MINIO_ACCESS_KEY
           value: "minioadmin"
