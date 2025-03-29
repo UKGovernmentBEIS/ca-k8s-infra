@@ -4,11 +4,10 @@ metadata:
   name: team-alpha-role
   namespace: team-alpha-{{ .Values.environment }}
 rules:
-# Ray job management permissions - restricted to team's jobs
+# Ray job management permissions
 - apiGroups: ["ray.io"]
   resources: ["rayjobs"]
   verbs: ["get", "list", "update", "delete", "create"]
-  resourceNames: ["*alpha*"]  # Only manage/view jobs with alpha in the name
 # Pod viewing permissions
 - apiGroups: [""]
   resources: ["pods"]
@@ -24,11 +23,10 @@ metadata:
   name: team-beta-role
   namespace: team-beta-{{ .Values.environment }}
 rules:
-# Ray job management permissions - restricted to team's jobs
+# Ray job management permissions
 - apiGroups: ["ray.io"]
   resources: ["rayjobs"]
   verbs: ["get", "list", "update", "delete", "create"]
-  resourceNames: ["*beta*"]  # Only manage/view jobs with beta in the name
 # Pod viewing permissions
 - apiGroups: [""]
   resources: ["pods"]
