@@ -14,7 +14,6 @@ metadata:
   namespace: nginx-app-{{ .Values.environment }}
   labels:
     app: nginx
-    component: web
     environment: {{ .Values.environment }}
 spec:
   replicas: {{ .Values.nginx.initialReplicas | default 1 }}
