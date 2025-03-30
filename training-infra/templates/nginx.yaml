@@ -6,6 +6,12 @@
 {{- end }}
 
 ---
+# Create the app namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: nginx-app-{{ .Values.environment }}
+---
 # Deploy Nginx
 apiVersion: apps/v1
 kind: Deployment
@@ -27,9 +33,6 @@ spec:
       labels:
         app: nginx
         environment: {{ .Values.environment }}
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "9113"
     spec:
       containers:
       - name: nginx
@@ -43,20 +46,6 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "200m"
-      - name: nginx-prometheus-exporter
-        image: {{ .Values.nginx.exporterImage | default "nginx/nginx-prometheus-exporter:0.10.0" }}
-        args:
-        - -nginx.scrape-uri=http://localhost/nginx_status
-        ports:
-        - containerPort: 9113
-          name: metrics
-        resources:
-          requests:
-            memory: "32Mi"
-            cpu: "50m"
-          limits:
-            memory: "64Mi"
-            cpu: "100m"
 ---
 # Configure Nginx for metrics
 apiVersion: v1
@@ -97,13 +86,6 @@ data:
                 root   /usr/share/nginx/html;
                 index  index.html index.htm;
             }
-    
-            # Enable Nginx status for Prometheus metrics
-            location /nginx_status {
-                stub_status on;
-                access_log off;
-                allow all;
-            }
         }
     }
 ---
@@ -116,25 +98,72 @@ metadata:
   labels:
     app: nginx
     environment: {{ .Values.environment }}
-  annotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "9113"
 spec:
   ports:
   - port: 80
     targetPort: 80
     name: http
-  - port: 9113
-    targetPort: 9113
-    name: metrics
   selector:
     app: nginx
     environment: {{ .Values.environment }}
 ---
-
-
+# KEDA HTTP Proxy for Nginx
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keda-http-proxy
+  namespace: app-{{ .Values.environment }}
+  labels:
+    app: keda-http-proxy
+    environment: {{ .Values.environment }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keda-http-proxy
+      environment: {{ .Values.environment }}
+  template:
+    metadata:
+      labels:
+        app: keda-http-proxy
+        environment: {{ .Values.environment }}
+    spec:
+      containers:
+      - name: keda-http-proxy
+        image: {{ .Values.keda.httpProxyImage | default "ghcr.io/kedacore/http-add-on:0.6.0" }}
+        args:
+        - --target-port=80
+        - --port=8080
+        - --proxy-target-host=nginx.app-{{ .Values.environment }}.svc.cluster.local
+        ports:
+        - containerPort: 8080
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
 ---
-# KEDA ScaledObject for Nginx
+# KEDA HTTP Proxy Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: keda-http-proxy
+  namespace: nginx-app-{{ .Values.environment }}
+  labels:
+    app: keda-http-proxy
+    environment: {{ .Values.environment }}
+spec:
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  selector:
+    app: keda-http-proxy
+    environment: {{ .Values.environment }}
+---
+# KEDA ScaledObject for Nginx using HTTP trigger
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
@@ -162,9 +191,115 @@ spec:
             value: {{ .Values.keda.scaleDownPercentage | default 50 }}
             periodSeconds: {{ .Values.keda.scaleDownPeriodSeconds | default 60 }}
   triggers:
-  - type: prometheus
+  - type: external-push
     metadata:
-      serverAddress: http://prometheus.prometheus-{{ .Values.environment }}.svc.cluster.local:9090
-      metricName: nginx_request_rate
+      scalerAddress: keda-http-proxy.nginx-app-{{ .Values.environment }}.svc.cluster.local:8080
       threshold: "{{ .Values.keda.requestRateThreshold | default "10" }}"
-      query: sum(rate(nginx_http_requests_total{kubernetes_namespace="nginx-app-{{ .Values.environment }}",app="nginx"}[2m]))
+---
+# KEDA Interceptor for HTTP requests
+apiVersion: http.keda.sh/v1alpha1
+kind: HTTPScaledObject
+metadata:
+  name: nginx-http-scaler
+  namespace: nginx-app-{{ .Values.environment }}
+spec:
+  scaleTargetRef:
+    name: nginx-scaler
+  hosts:
+  - nginx.nginx-app-{{ .Values.environment }}.svc.cluster.local
+  targetPendingRequests: {{ .Values.keda.pendingRequestsThreshold | default "100" }}
+---
+# Cilium Network Policy for Nginx
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: nginx-network-policy
+  namespace: nginx-app-{{ .Values.environment }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app: nginx
+      environment: {{ .Values.environment }}
+  
+  ingress:
+    # Allow traffic from the KEDA HTTP proxy
+    - fromEndpoints:
+        - matchLabels:
+            app: keda-http-proxy
+            environment: {{ .Values.environment }}
+            k8s:io.kubernetes.pod.namespace: nginx-app-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+    # Allow direct traffic to port 80
+    - toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+  
+  egress:
+    # Allow DNS queries
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+---
+# Cilium Network Policy for KEDA HTTP Proxy
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: keda-http-proxy-network-policy
+  namespace: nginx-app-{{ .Values.environment }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app: keda-http-proxy
+      environment: {{ .Values.environment }}
+  
+  ingress:
+    # Allow incoming traffic to the proxy port
+    - toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+  
+  egress:
+    # Allow traffic to Nginx
+    - toEndpoints:
+        - matchLabels:
+            app: nginx
+            environment: {{ .Values.environment }}
+            k8s:io.kubernetes.pod.namespace: nginx-app-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+    
+    # Allow DNS queries
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    
+    # Allow communication with KEDA operator
+    - toEndpoints:
+        - matchLabels:
+            app: keda-operator
+            k8s:io.kubernetes.pod.namespace: keda
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP

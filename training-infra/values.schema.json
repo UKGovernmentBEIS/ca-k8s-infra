@@ -27,11 +27,6 @@
           "type": "string",
           "description": "Nginx container image",
           "default": "nginx:latest"
-        },
-        "exporterImage": {
-          "type": "string",
-          "description": "Nginx Prometheus exporter image",
-          "default": "nginx/nginx-prometheus-exporter:0.10.0"
         }
       },
       "required": ["enabled"]
@@ -88,10 +83,20 @@
           "minimum": 1,
           "default": 60
         },
+        "httpProxyImage": {
+          "type": "string",
+          "description": "KEDA HTTP add-on image",
+          "default": "ghcr.io/kedacore/http-add-on:0.6.0"
+        },
         "requestRateThreshold": {
           "type": "string",
           "description": "Request rate threshold that triggers scaling (requests per second)",
           "default": "10"
+        },
+        "pendingRequestsThreshold": {
+          "type": "string",
+          "description": "Number of pending requests that triggers scaling",
+          "default": "100"
         }
       },
       "required": ["enabled"]

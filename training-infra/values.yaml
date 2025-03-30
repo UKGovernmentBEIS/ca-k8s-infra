@@ -1,9 +1,9 @@
 rayClusterName: raycluster
+# Nginx configuration
 nginx:
   enabled: true
   initialReplicas: 1
   image: "nginx:latest"
-  exporterImage: "nginx/nginx-prometheus-exporter:0.10.0"
 
 # KEDA scaling configuration
 keda:
@@ -15,5 +15,6 @@ keda:
   stabilizationWindowSeconds: 300
   scaleDownPercentage: 50
   scaleDownPeriodSeconds: 60
-  prometheusServerAddress: "http://prometheus.monitoring.svc.cluster.local:9090"
+  httpProxyImage: "ghcr.io/kedacore/http-add-on:0.6.0"
   requestRateThreshold: "10"  # Scale when more than 10 requests per second
+  pendingRequestsThreshold: "100"  # Number of pending requests that triggers scaling
