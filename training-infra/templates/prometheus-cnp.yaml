@@ -30,3 +30,13 @@ spec:
               protocol: UDP
             - port: "53"
               protocol: TCP
+    # Allow Prometheus to scrape metrics from Nginx pods
+    - toEndpoints:
+        - matchLabels:
+            app: nginx
+            environment: {{ .Values.environment }}
+            k8s:io.kubernetes.pod.namespace: nginx-app-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "9113"  # Nginx metrics exporter port
+              protocol: TCP

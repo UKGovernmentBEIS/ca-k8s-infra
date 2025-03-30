@@ -1,0 +1,42 @@
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: nginx-network-policy
+  namespace: nginx-app-{{ .Values.environment }}
+spec:
+  endpointSelector:
+    matchLabels:
+      app: nginx
+      environment: {{ .Values.environment }}
+  
+  ingress:
+    # Allow traffic from anywhere to ports 80 (HTTP) and 9113 (metrics)
+    - toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+            - port: "9113"
+              protocol: TCP
+  
+  egress:
+    # Allow DNS queries
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+              
+    # Allow outbound traffic for basic system operations
+    - toEntities:
+        - cluster
+      toPorts:
+        - ports:
+            - port: "8080"  # Common port for internal services
+              protocol: TCP
+            - port: "443"  # HTTPS
+              protocol: TCP

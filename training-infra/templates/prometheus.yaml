@@ -35,6 +35,35 @@ data:
           - source_labels: [__meta_kubernetes_pod_label_ray_io_node_type]
             action: replace
             target_label: ray_node_type
+
+      - job_name: 'nginx'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - nginx-app{{ .Values.environment }}
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            regex: nginx
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            regex: "true"
+            action: keep
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            target_label: __address__
+          - source_labels: [__meta_kubernetes_pod_label_environment]
+            action: replace
+            target_label: environment
+          - source_labels: [__meta_kubernetes_namespace]
+            action: replace
+            target_label: kubernetes_namespace
 ---
 apiVersion: apps/v1
 kind: Deployment

@@ -8,142 +8,90 @@
     "environment": {
       "type": "string"
     },
-    "keda": {
+    "nginx": {
       "type": "object",
-      "description": "KEDA autoscaling configuration for Ray cluster",
+      "description": "Nginx configuration",
       "properties": {
         "enabled": {
           "type": "boolean",
-          "description": "Enable KEDA autoscaling",
+          "description": "Enable Nginx deployment",
+          "default": true
+        },
+        "initialReplicas": {
+          "type": "integer",
+          "description": "Initial number of Nginx replicas",
+          "minimum": 1,
+          "default": 1
+        },
+        "image": {
+          "type": "string",
+          "description": "Nginx container image",
+          "default": "nginx:latest"
+        },
+        "exporterImage": {
+          "type": "string",
+          "description": "Nginx Prometheus exporter image",
+          "default": "nginx/nginx-prometheus-exporter:0.10.0"
+        }
+      },
+      "required": ["enabled"]
+    },
+    "keda": {
+      "type": "object",
+      "description": "KEDA scaling configuration",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "description": "Enable KEDA scaling",
           "default": true
         },
         "minReplicas": {
           "type": "integer",
-          "description": "Minimum number of worker replicas",
-          "minimum": 0,
+          "description": "Minimum number of replicas",
+          "minimum": 1,
           "default": 1
         },
         "maxReplicas": {
           "type": "integer",
-          "description": "Maximum number of worker replicas",
+          "description": "Maximum number of replicas",
           "minimum": 1,
-          "default": 5
+          "default": 10
         },
         "pollingInterval": {
           "type": "integer",
-          "description": "Interval (in seconds) to check metrics",
-          "minimum": 1,
+          "description": "How frequently KEDA checks metrics (in seconds)",
+          "minimum": 5,
           "default": 15
         },
         "cooldownPeriod": {
           "type": "integer",
-          "description": "Period (in seconds) to wait before scaling down",
-          "minimum": 1,
+          "description": "Period to wait after scaling activity before scaling down again (in seconds)",
+          "minimum": 60,
           "default": 300
         },
         "stabilizationWindowSeconds": {
           "type": "integer",
-          "description": "Window (in seconds) during which scaling operations will be delayed",
-          "minimum": 0,
+          "description": "How long to wait before considering scaling down (in seconds)",
+          "minimum": 60,
           "default": 300
         },
         "scaleDownPercentage": {
           "type": "integer",
-          "description": "Maximum percentage to scale down in a single operation",
+          "description": "Maximum percentage to scale down at once",
           "minimum": 1,
           "maximum": 100,
           "default": 50
         },
         "scaleDownPeriodSeconds": {
           "type": "integer",
-          "description": "Period (in seconds) for scale down policies",
+          "description": "Period for scale down policy (in seconds)",
           "minimum": 1,
           "default": 60
         },
-        "triggers": {
-          "type": "object",
-          "description": "KEDA scaling triggers configuration",
-          "properties": {
-            "cpu": {
-              "type": "object",
-              "description": "CPU utilization trigger",
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "description": "Enable CPU-based scaling",
-                  "default": true
-                },
-                "type": {
-                  "type": "string",
-                  "description": "Type of CPU metric to monitor",
-                  "enum": ["Utilization", "AverageValue", "Value"],
-                  "default": "Utilization"
-                },
-                "value": {
-                  "type": ["integer", "string"],
-                  "description": "CPU utilization percentage threshold",
-                  "default": 70
-                }
-              },
-              "required": ["enabled"]
-            },
-            "memory": {
-              "type": "object",
-              "description": "Memory utilization trigger",
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "description": "Enable memory-based scaling",
-                  "default": false
-                },
-                "type": {
-                  "type": "string",
-                  "description": "Type of memory metric to monitor",
-                  "enum": ["Utilization", "AverageValue", "Value"],
-                  "default": "Utilization"
-                },
-                "value": {
-                  "type": ["integer", "string"],
-                  "description": "Memory utilization percentage threshold",
-                  "default": 80
-                }
-              },
-              "required": ["enabled"]
-            },
-            "prometheus": {
-              "type": "object",
-              "description": "Prometheus metrics trigger",
-              "properties": {
-                "enabled": {
-                  "type": "boolean",
-                  "description": "Enable Prometheus-based scaling",
-                  "default": false
-                },
-                "serverAddress": {
-                  "type": "string",
-                  "description": "Prometheus server address",
-                  "default": "http://prometheus-server.monitoring.svc.cluster.local"
-                },
-                "metricName": {
-                  "type": "string",
-                  "description": "Name of the metric in Prometheus",
-                  "default": "ray_training_queue_length"
-                },
-                "threshold": {
-                  "type": "string",
-                  "description": "Threshold value for scaling",
-                  "default": "5"
-                },
-                "query": {
-                  "type": "string",
-                  "description": "Prometheus query to execute",
-                  "default": "sum(ray_task_queue_size{namespace=\"training\"})"
-                }
-              },
-              "required": ["enabled"]
-            }
-          },
-          "additionalProperties": false
+        "requestRateThreshold": {
+          "type": "string",
+          "description": "Request rate threshold that triggers scaling (requests per second)",
+          "default": "10"
         }
       },
       "required": ["enabled"]

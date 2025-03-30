@@ -1,25 +1,19 @@
 rayClusterName: raycluster
+nginx:
+  enabled: true
+  initialReplicas: 1
+  image: "nginx:latest"
+  exporterImage: "nginx/nginx-prometheus-exporter:0.10.0"
+
+# KEDA scaling configuration
 keda:
   enabled: true
   minReplicas: 1
-  maxReplicas: 5
+  maxReplicas: 10
   pollingInterval: 15
   cooldownPeriod: 300
   stabilizationWindowSeconds: 300
   scaleDownPercentage: 50
   scaleDownPeriodSeconds: 60
-  triggers:
-    cpu:
-      enabled: true
-      type: "Utilization"
-      value: 70
-    memory:
-      enabled: false
-      type: "Utilization"
-      value: 80
-    prometheus:
-      enabled: false
-      serverAddress: "http://prometheus-server.monitoring.svc.cluster.local"
-      metricName: "ray_training_queue_length"
-      threshold: "5"
-      query: "sum(ray_task_queue_size{namespace=\"training\"})"
+  prometheusServerAddress: "http://prometheus.monitoring.svc.cluster.local:9090"
+  requestRateThreshold: "10"  # Scale when more than 10 requests per second

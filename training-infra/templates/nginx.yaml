@@ -1,0 +1,170 @@
+{{- if not .Values.nginx }}
+{{- $_ := set .Values "nginx" dict }}
+{{- end }}
+{{- if not .Values.keda }}
+{{- $_ := set .Values "keda" dict }}
+{{- end }}
+
+---
+# Deploy Nginx
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx
+  namespace: nginx-app-{{ .Values.environment }}
+  labels:
+    app: nginx
+    component: web
+    environment: {{ .Values.environment }}
+spec:
+  replicas: {{ .Values.nginx.initialReplicas | default 1 }}
+  selector:
+    matchLabels:
+      app: nginx
+      environment: {{ .Values.environment }}
+  template:
+    metadata:
+      labels:
+        app: nginx
+        environment: {{ .Values.environment }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9113"
+    spec:
+      containers:
+      - name: nginx
+        image: {{ .Values.nginx.image | default "nginx:latest" }}
+        ports:
+        - containerPort: 80
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+      - name: nginx-prometheus-exporter
+        image: {{ .Values.nginx.exporterImage | default "nginx/nginx-prometheus-exporter:0.10.0" }}
+        args:
+        - -nginx.scrape-uri=http://localhost/nginx_status
+        ports:
+        - containerPort: 9113
+          name: metrics
+        resources:
+          requests:
+            memory: "32Mi"
+            cpu: "50m"
+          limits:
+            memory: "64Mi"
+            cpu: "100m"
+---
+# Configure Nginx for metrics
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: nginx-app-{{ .Values.environment }}
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+    
+    error_log  /var/log/nginx/error.log notice;
+    pid        /var/run/nginx.pid;
+    
+    events {
+        worker_connections  1024;
+    }
+    
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+    
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for"';
+    
+        access_log  /var/log/nginx/access.log  main;
+    
+        sendfile        on;
+        keepalive_timeout  65;
+    
+        server {
+            listen       80;
+            server_name  localhost;
+    
+            location / {
+                root   /usr/share/nginx/html;
+                index  index.html index.htm;
+            }
+    
+            # Enable Nginx status for Prometheus metrics
+            location /nginx_status {
+                stub_status on;
+                access_log off;
+                allow all;
+            }
+        }
+    }
+---
+# Nginx Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: nginx
+  namespace: nginx-app-{{ .Values.environment }}
+  labels:
+    app: nginx
+    environment: {{ .Values.environment }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "9113"
+spec:
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http
+  - port: 9113
+    targetPort: 9113
+    name: metrics
+  selector:
+    app: nginx
+    environment: {{ .Values.environment }}
+---
+
+
+---
+# KEDA ScaledObject for Nginx
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: nginx-scaler
+  namespace: nginx-app-{{ .Values.environment }}
+  labels:
+    app: nginx
+    environment: {{ .Values.environment }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: nginx
+  minReplicaCount: {{ .Values.keda.minReplicas | default 1 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas | default 10 }}
+  pollingInterval: {{ .Values.keda.pollingInterval | default 15 }}
+  cooldownPeriod: {{ .Values.keda.cooldownPeriod | default 300 }}
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: {{ .Values.keda.stabilizationWindowSeconds | default 300 }}
+          policies:
+          - type: Percent
+            value: {{ .Values.keda.scaleDownPercentage | default 50 }}
+            periodSeconds: {{ .Values.keda.scaleDownPeriodSeconds | default 60 }}
+  triggers:
+  - type: prometheus
+    metadata:
+      serverAddress: http://prometheus.prometheus-{{ .Values.environment }}.svc.cluster.local:9090
+      metricName: nginx_request_rate
+      threshold: "{{ .Values.keda.requestRateThreshold | default "10" }}"
+      query: sum(rate(nginx_http_requests_total{kubernetes_namespace="nginx-app-{{ .Values.environment }}",app="nginx"}[2m]))
