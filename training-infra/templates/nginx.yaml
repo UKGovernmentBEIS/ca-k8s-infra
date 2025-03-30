@@ -6,12 +6,6 @@
 {{- end }}
 
 ---
-# Create the app namespace
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: nginx-app-{{ .Values.environment }}
----
 # Deploy Nginx
 apiVersion: apps/v1
 kind: Deployment
@@ -112,7 +106,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: keda-http-proxy
-  namespace: app-{{ .Values.environment }}
+  namespace: nginx-app-{{ .Values.environment }}
   labels:
     app: keda-http-proxy
     environment: {{ .Values.environment }}
@@ -205,6 +199,8 @@ metadata:
 spec:
   scaleTargetRef:
     name: nginx-scaler
+    service: keda-http-proxy
+    port: 80
   hosts:
   - nginx.nginx-app-{{ .Values.environment }}.svc.cluster.local
   targetPendingRequests: {{ .Values.keda.pendingRequestsThreshold | default "100" }}
