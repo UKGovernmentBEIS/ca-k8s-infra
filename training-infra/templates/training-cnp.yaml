@@ -29,17 +29,17 @@ spec:
             - port: "9000"
               protocol: TCP
 
-    # Allow traffic to observability
-    - toEndpoints:
-        - matchLabels:
-            app: opentelemetry-collector
-            k8s:io.kubernetes.pod.namespace: observability-{{ .Values.environment }}
+    # Allow traffic to OTel collector
+    - toServices:
+      - k8sService:
+          namespace: observability-{{ .Values.environment }}
+          name: opentelemetry-collector
       toPorts:
-        - ports:
-            - port: "4317"
-              protocol: TCP
-            - port: "4318"
-              protocol: TCP
+      - ports:
+        - port: "4317"
+          protocol: TCP
+        - port: "4318"
+          protocol: TCP
 
     # Allow DNS queries
     - toEndpoints:
