@@ -1,30 +1,49 @@
 {{- if .Values.keda.enabled }}
+---
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:
-  name: {{ .Values.rayClusterName }}-{{ .Values.environment }}-memory-scaler
-  namespace: {{ .Release.Namespace }}
+  name: ray-worker-scaler-{{ .Values.rayClusterName }}-{{ .Values.environment }}
+  labels:
+    app: {{ .Values.rayClusterName }}
+    environment: {{ .Values.environment }}
 spec:
   scaleTargetRef:
     apiVersion: ray.io/v1
     kind: RayCluster
     name: {{ .Values.rayClusterName }}-{{ .Values.environment }}
-    envSourceContainerName: ray-worker
-  scaleTargetRef.containerName: ray-worker
   minReplicaCount: {{ .Values.keda.minReplicas | default 1 }}
-  maxReplicaCount: {{ .Values.keda.maxReplicas | default 3 }}
+  maxReplicaCount: {{ .Values.keda.maxReplicas | default 10 }}
   pollingInterval: {{ .Values.keda.pollingInterval | default 15 }}
   cooldownPeriod: {{ .Values.keda.cooldownPeriod | default 300 }}
   advanced:
     horizontalPodAutoscalerConfig:
       behavior:
         scaleDown:
-          stabilizationWindowSeconds: 300
+          stabilizationWindowSeconds: {{ .Values.keda.stabilizationWindowSeconds | default 300 }}
+          policies:
+          - type: Percent
+            value: {{ .Values.keda.scaleDownPercentage | default 50 }}
+            periodSeconds: {{ .Values.keda.scaleDownPeriodSeconds | default 60 }}
   triggers:
+  {{- if .Values.keda.triggers.cpu.enabled }}
+  - type: cpu
+    metadata:
+      type: {{ .Values.keda.triggers.cpu.type | default "Utilization" }}
+      value: "{{ .Values.keda.triggers.cpu.value | default 70 }}"
+  {{- end }}
+  {{- if .Values.keda.triggers.memory.enabled }}
+  - type: memory
+    metadata:
+      type: {{ .Values.keda.triggers.memory.type | default "Utilization" }}
+      value: "{{ .Values.keda.triggers.memory.value | default 80 }}"
+  {{- end }}
+  {{- if .Values.keda.triggers.prometheus.enabled }}
   - type: prometheus
     metadata:
-      serverAddress: {{ .Values.keda.prometheus.serverAddress }}
-      metricName: ray_memory_usage
-      threshold: "{{ .Values.keda.memoryThreshold | default 80 }}"
-      query: {{ .Values.keda.prometheus.memoryQuery }}
+      serverAddress: {{ .Values.keda.triggers.prometheus.serverAddress }}
+      metricName: {{ .Values.keda.triggers.prometheus.metricName }}
+      threshold: "{{ .Values.keda.triggers.prometheus.threshold }}"
+      query: {{ .Values.keda.triggers.prometheus.query }}
+  {{- end }}
 {{- end }}
