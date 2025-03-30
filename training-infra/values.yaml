@@ -1,13 +1,1 @@
 rayClusterName: raycluster
-collector:
-  image:
-    repository: otel/opentelemetry-collector
-    tag: latest
-  resources:
-    requests:
-      memory: "1Gi"
-    limits:
-      memory: "3Gi"
-  ports:
-    otlpGrpc: 55680
-    otlpHttp: 55681
