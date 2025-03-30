@@ -7,22 +7,22 @@ import pyarrow
 import ray
 import torch
 from datasets import load_from_disk
-from opentelemetry import metrics, trace
-from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
-
-# Metric-related imports
-from opentelemetry.sdk.metrics import MeterProvider
-from opentelemetry.sdk.resources import Resource
-
-# Trace-related imports
-from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
 from pyarrow.fs import S3FileSystem
 from ray.train import RunConfig, ScalingConfig
 from ray.train.torch import TorchTrainer, prepare_data_loader, prepare_model
 from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader
 from transformers import AutoModelForCausalLM, AutoTokenizer
+
+#Otel imports
+from opentelemetry import trace, metrics
+from opentelemetry.sdk.resources import Resource
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.metrics import MeterProvider
+from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
 runtime_env = {
     "env_vars": {
@@ -81,81 +81,93 @@ def copy_dir_to_s3(fs, source_path, target_path):
 
 
 def train_func(config):
-    # Set up OpenTelemetry
-    resource = Resource.create({"service.name": "training"})
-    tracer_provider = TracerProvider(resource=resource)
-    otlp_exporter = OTLPSpanExporter(
+    # Otel setup
+    resource = Resource(attributes={"service.name": "ml-training"})
+    
+    trace.set_tracer_provider(TracerProvider(resource=resource))
+    tracer = trace.get_tracer("ml-trainer")
+    span_exporter = OTLPSpanExporter( 
         endpoint=f"http://opentelemetry-collector.observability-{os.environ['ENVIRONMENT']}.svc.cluster.local:4318/v1/traces",
         headers={},
         timeout=10,
     )
-    tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    trace.get_tracer_provider().add_span_processor(BatchSpanProcessor(span_exporter))
 
-    trace.set_tracer_provider(tracer_provider)
-    metrics.set_meter_provider(MeterProvider(resource=resource))
+    metric_exporter = OTLPMetricExporter( 
+        endpoint=f"http://opentelemetry-collector.observability-{os.environ['ENVIRONMENT']}.svc.cluster.local:4318/v1/metrics",
+        headers={},
+        timeout=10,
+    )
+    metric_reader = PeriodicExportingMetricReader(metric_exporter, export_interval_millis=5000)
+    metrics.set_meter_provider(MeterProvider(resource=resource, metric_readers=[metric_reader]))
+    meter = metrics.get_meter("ml-trainer-metrics")
 
-    tracer = trace.get_tracer("ml-trainer")
-    meter = metrics.get_meter("ml-training-metrics")
     train_loss_counter = meter.create_counter(
-        name="ml_training_loss", description="Training loss", unit="1"
+        name="ml_training_loss",
+        description="Training loss over epochs",
+        unit="1",
     )
 
+    test_loss_counter = meter.create_counter(
+        name="ml_test_loss",
+        description="Test loss over epochs",
+        unit="1",
+    )
+    
     # Get the current worker's rank
     rank = ray.train.get_context().get_world_rank()
 
-    with tracer.start_as_current_span("load-data"):
-        # Initialize the S3 filesystem
-        fs = S3FileSystem(
-            access_key="minioadmin",
-            secret_key="minioadmin",  # noqa
-            endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
-            scheme="http",
+    # Initialize the S3 filesystem
+    fs = S3FileSystem(
+        access_key="minioadmin",
+        secret_key="minioadmin",  # noqa
+        endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
+        scheme="http",
+    )
+
+    # copy data to disk
+    print("Copying data to disk")
+    with TemporaryDirectory() as tmp_dir:
+        imdb_path = Path(tmp_dir)
+        copy_dir_from_s3(fs, "datasets/imdb/", imdb_path)
+        print("Data copied to disk")
+
+        # Load datasets
+        train_dataset = load_from_disk(str(imdb_path / "train"))
+        test_dataset = load_from_disk(str(imdb_path / "test"))
+        copy_dir_from_s3(fs, "datasets/imdb/", imdb_path)
+        print("Data copied to disk")
+
+        # Load datasets
+        train_dataset = load_from_disk(str(imdb_path / "train"))
+        test_dataset = load_from_disk(str(imdb_path / "test"))
+
+    # Take subset of data
+    train_dataset = train_dataset.take(train_config["batch_size"])
+    test_dataset = test_dataset.take(train_config["batch_size"])
+
+    # Prepare local directory for the model files
+    s3_path = f"models/{config['model_location']}/"
+
+    with tempfile.TemporaryDirectory() as local_model_dir:
+        # Copy the model files from S3 to local directory
+        print(f"Copying model files from {s3_path} to {local_model_dir}")
+        copy_dir_from_s3(fs, s3_path, local_model_dir)
+        print("Model files copied to local directory")
+
+        # Initialize tokenizer and model from local directory
+        tokenizer = AutoTokenizer.from_pretrained(local_model_dir)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+
+        model = AutoModelForCausalLM.from_pretrained(
+            local_model_dir, use_safetensors=True
         )
+        model.gradient_checkpointing_enable()
+        model.use_cache = False
 
-        # copy data to disk
-        print("Copying data to disk")
-        with TemporaryDirectory() as tmp_dir:
-            imdb_path = Path(tmp_dir)
-            copy_dir_from_s3(fs, "datasets/imdb/", imdb_path)
-            print("Data copied to disk")
-
-            # Load datasets
-            train_dataset = load_from_disk(str(imdb_path / "train"))
-            test_dataset = load_from_disk(str(imdb_path / "test"))
-            copy_dir_from_s3(fs, "datasets/imdb/", imdb_path)
-            print("Data copied to disk")
-
-            # Load datasets
-            train_dataset = load_from_disk(str(imdb_path / "train"))
-            test_dataset = load_from_disk(str(imdb_path / "test"))
-
-        # Take subset of data
-        train_dataset = train_dataset.take(train_config["batch_size"])
-        test_dataset = test_dataset.take(train_config["batch_size"])
-
-    with tracer.start_as_current_span("load-model"):
-        # Prepare local directory for the model files
-        s3_path = f"models/{config['model_location']}/"
-
-        with tempfile.TemporaryDirectory() as local_model_dir:
-            # Copy the model files from S3 to local directory
-            print(f"Copying model files from {s3_path} to {local_model_dir}")
-            copy_dir_from_s3(fs, s3_path, local_model_dir)
-            print("Model files copied to local directory")
-
-            # Initialize tokenizer and model from local directory
-            tokenizer = AutoTokenizer.from_pretrained(local_model_dir)
-            if tokenizer.pad_token is None:
-                tokenizer.pad_token = tokenizer.eos_token
-
-            model = AutoModelForCausalLM.from_pretrained(
-                local_model_dir, use_safetensors=True
-            )
-            model.gradient_checkpointing_enable()
-            model.use_cache = False
-
-            # Prepare the model for distributed training
-            model = prepare_model(model)
+        # Prepare the model for distributed training
+        model = prepare_model(model)
 
         def preprocess_function(examples):
             prompts = [
@@ -168,88 +180,85 @@ def train_func(config):
             encoded["labels"] = encoded["input_ids"].copy()
             return encoded
 
-        with tracer.start_as_current_span("preprocess-data"):
-            # Preprocess datasets
-            tokenized_train = train_dataset.map(
-                preprocess_function,
-                batched=True,
-                remove_columns=train_dataset.column_names,  # pyright: ignore
-            )
-            tokenized_test = test_dataset.map(
-                preprocess_function,
-                batched=True,
-                remove_columns=test_dataset.column_names,  # pyright: ignore
-            )
+        # Preprocess datasets
+        tokenized_train = train_dataset.map(
+            preprocess_function,
+            batched=True,
+            remove_columns=train_dataset.column_names,  # pyright: ignore
+        )
+        tokenized_test = test_dataset.map(
+            preprocess_function,
+            batched=True,
+            remove_columns=test_dataset.column_names,  # pyright: ignore
+        )
 
-            # Convert to PyTorch datasets
-            train_dataset = tokenized_train.with_format("torch")
-            test_dataset = tokenized_test.with_format("torch")
+        # Convert to PyTorch datasets
+        train_dataset = tokenized_train.with_format("torch")
+        test_dataset = tokenized_test.with_format("torch")
 
-            # Create DataLoaders
-            train_loader = DataLoader(
-                train_dataset, batch_size=config["batch_size"], shuffle=True
-            )
-            test_loader = DataLoader(
-                test_dataset, batch_size=config["batch_size"], shuffle=False
-            )
+        # Create DataLoaders
+        train_loader = DataLoader(
+            train_dataset, batch_size=config["batch_size"], shuffle=True
+        )
+        test_loader = DataLoader(
+            test_dataset, batch_size=config["batch_size"], shuffle=False
+        )
 
-            # Prepare data loaders for distributed training
-            train_loader = prepare_data_loader(train_loader)
-            test_loader = prepare_data_loader(test_loader)
+        # Prepare data loaders for distributed training
+        train_loader = prepare_data_loader(train_loader)
+        test_loader = prepare_data_loader(test_loader)
 
         # Training setup
         optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
 
         # Training loop
-        with tracer.start_as_current_span("train"):
-            model.train()
-            epoch_loss = 0.0
-            for epoch in range(config["num_epochs"]):
-                with tracer.start_as_current_span("epoch"):
-                    epoch_loss = 0.0
-                    for batch in train_loader:
-                        optimizer.zero_grad()
+        model.train()
+        epoch_loss = 0.0
+        for epoch in range(config["num_epochs"]):
+            with tracer.start_as_current_span(f"training-epoch") as span:
+                epoch_loss = 0.0
+                for batch in train_loader:
+                    optimizer.zero_grad()
 
-                        # Forward pass
+                    # Forward pass
+                    outputs = model(**batch)
+                    loss = outputs.loss
+                    loss.backward()
+                    optimizer.step()
+
+                    epoch_loss += loss.item()
+
+                    # Report metrics to Ray
+                    ray.train.report({"training_loss": loss.item(), "epoch": epoch})
+                train_loss_counter.add(loss.item(), {"epoch": epoch})
+
+                # Evaluate on test set
+                model.eval()
+                test_loss = 0.0
+                with torch.no_grad():
+                    for batch in test_loader:
                         outputs = model(**batch)
-                        loss = outputs.loss
-                        loss.backward()
-                        optimizer.step()
+                        test_loss += outputs.loss.item()
+                model.train()
 
-                        epoch_loss += loss.item()
-
-                        # Report metrics to Ray
-                        ray.train.report({"training_loss": loss.item(), "epoch": epoch})
-                        train_loss_counter.add(epoch_loss)
-
-                with tracer.start_as_current_span("evaluate"):
-                    # Evaluate on test set
-                    model.eval()
-                    test_loss = 0.0
-                    with torch.no_grad():
-                        for batch in test_loader:
-                            outputs = model(**batch)
-                            test_loss += outputs.loss.item()
-                    model.train()
-
-                    # Report test loss
-                    ray.train.report(
-                        {"test_loss": test_loss / len(test_loader), "epoch": epoch}
-                    )
+                # Report test loss
+                ray.train.report(
+                    {"test_loss": test_loss / len(test_loader), "epoch": epoch}
+                )
+                test_loss_counter.add(test_loss, {"epoch": epoch})
 
         # Save the model on the main process
         if rank == 0:
-            with tracer.start_as_current_span("save-model"):
-                # Save the model to local directory
-                if isinstance(model, DistributedDataParallel):
-                    model.module.save_pretrained(local_model_dir)
-                else:
-                    model.save_pretrained(local_model_dir)
-                tokenizer.save_pretrained(local_model_dir)
+            # Save the model to local directory
+            if isinstance(model, DistributedDataParallel):
+                model.module.save_pretrained(local_model_dir)
+            else:
+                model.save_pretrained(local_model_dir)
+            tokenizer.save_pretrained(local_model_dir)
 
-                # Copy the saved model files back to S3
-                checkpoint_path = f"models/checkpoints/sentiment_model/{ray.train.get_context().get_trial_id()}"
-                copy_dir_to_s3(fs, local_model_dir, checkpoint_path)
+            # Copy the saved model files back to S3
+            checkpoint_path = f"models/checkpoints/sentiment_model/{ray.train.get_context().get_trial_id()}"
+            copy_dir_to_s3(fs, local_model_dir, checkpoint_path)
 
     return {"final_loss": epoch_loss / len(train_loader)}
 
@@ -258,35 +267,17 @@ if __name__ == "__main__":
     # Run `make ray_port_forward` ahead of this to make the ray cluster accessible
     ray.init(address="ray://localhost:10001", runtime_env=runtime_env)
 
-    # Set up OpenTelemetry
-    resource = Resource.create({"service.name": "training"})
-    tracer_provider = TracerProvider(resource=resource)
-    tracer_provider.add_span_processor(BatchSpanProcessor(ConsoleSpanExporter()))
-    otlp_exporter = OTLPSpanExporter(
-        endpoint=f"http://opentelemetry-collector.observability-{os.environ['ENVIRONMENT']}.svc.cluster.local:4318/v1/traces",
-        headers={},
-        timeout=10,
-    )
-    tracer_provider.add_span_processor(BatchSpanProcessor(otlp_exporter))
+    with TemporaryDirectory() as results_dir:
+        # Create the trainer
+        trainer = TorchTrainer(
+            train_func,
+            train_loop_config=train_config,
+            scaling_config=scaling_config,
+            run_config=RunConfig(results_dir),
+        )
 
-    trace.set_tracer_provider(tracer_provider)
-
-    tracer = trace.get_tracer(__name__)
-    with tracer.start_as_current_span("training-root") as root_span:
-        with TemporaryDirectory() as results_dir:
-            # Create the trainer
-            trainer = TorchTrainer(
-                train_func,
-                train_loop_config=train_config,
-                scaling_config=scaling_config,
-                run_config=RunConfig(results_dir),
-            )
-
-            # Start training
-            try:
-                results = trainer.fit()
-            except Exception as e:
-                root_span.record_exception(e)
-                raise
-            finally:
-                ray.shutdown()
+    # Start training
+    try:
+        results = trainer.fit()
+    finally:
+        ray.shutdown()
