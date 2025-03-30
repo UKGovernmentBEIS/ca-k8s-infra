@@ -11,11 +11,6 @@ spec:
       dashboard-host: '0.0.0.0'
       block: 'true'
     template:
-      metadata:
-        annotations:
-          prometheus.io/scrape: "true"
-          prometheus.io/port: "8265"
-          prometheus.io/path: "/metrics"
       spec:
         containers:
           - name: ray-head
@@ -50,11 +45,6 @@ spec:
       rayStartParams:
         block: 'true'
       template:
-        metadata:
-          annotations:
-            prometheus.io/scrape: "true"
-            prometheus.io/port: "8265"
-            prometheus.io/path: "/metrics"
         spec:
           containers:
             - name: ray-worker

@@ -13,12 +13,6 @@ spec:
         - matchLabels:
             ray.io/cluster: {{ .Values.rayClusterName }}-{{ .Values.environment }}
 
-    # Allow Prometheus to scrape metrics from Ray cluster
-    - fromEndpoints:
-        - matchLabels:
-            app: prometheus
-            k8s:io.kubernetes.pod.namespace: prometheus-{{ .Values.environment }}
-
   egress:
     # Allow all traffic within the cluster
     - toEndpoints:
