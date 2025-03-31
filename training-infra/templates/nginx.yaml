@@ -72,7 +72,7 @@ spec:
     service: nginx
     port: 80
   hosts:
-  - example.com
+  - {{ .Values.environment }}.example.com
   replicas:
     min: 1
     max: 10
