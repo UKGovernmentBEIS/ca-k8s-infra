@@ -20,7 +20,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 runtime_env = {
     "env_vars": {
         "ENVIRONMENT": os.environ["ENVIRONMENT"],
-    },
+    }
 }
 
 # Define the scaling configuration

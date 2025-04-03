@@ -1,4 +1,4 @@
-FROM rayproject/ray:2.42.1-py312-cpu
+FROM aisiom/rayproject-ray:2.42.1-py312-cpu
 USER root
 
 # Set environment variables
