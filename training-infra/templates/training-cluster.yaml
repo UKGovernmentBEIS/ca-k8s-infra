@@ -14,7 +14,7 @@ spec:
       spec:
         containers:
           - name: ray-head
-            # This image will be built from the training.Dockerfile 
+            # preloaded onto nodes
             image: localhost:5001/training:{{ .Values.environment }}
             imagePullPolicy: Always
             ports:
