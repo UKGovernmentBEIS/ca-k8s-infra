@@ -11,4 +11,3 @@ RUN pip install torch==2.6.0+cpu --index-url https://download.pytorch.org/whl/cp
     && rm -rf ~/.cache/pip
 
 RUN pip install aim==3.27.0 && rm -rf ~/.cache/pip
-
