@@ -18,10 +18,10 @@ spec:
 
           # Create bucket if it doesn't exist
           mc mb myminio/datasets --ignore-existing
-
+          
           # Upload to MinIO
           mc cp -r /volumes/imdb/ myminio/datasets/imdb/
-
+          
           echo "Dataset transfer complete"
         env:
         - name: MINIO_ACCESS_KEY
