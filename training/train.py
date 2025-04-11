@@ -29,7 +29,7 @@ scaling_config = ScalingConfig(
 
 # Training configuration
 train_config = {
-    "model_location": "pythia-70m",  # This is the path in MinIO under the models bucket
+    "model_location": "model-small",  # This is the path in MinIO under the models bucket
     "batch_size": 2,
     "learning_rate": 5e-5,
     "num_epochs": 1,
@@ -218,8 +218,7 @@ def train_func(config):
 
 
 if __name__ == "__main__":
-    # Run `make ray_port_forward` ahead of this to make the ray cluster accessible
-    ray.init(address="ray://localhost:10001", runtime_env=runtime_env)
+    ray.init(address=f"ray://raycluster-{os.environ['ENVIRONMENT']}-head-svc.training-{os.environ['ENVIRONMENT']}.svc.cluster.local:10001", runtime_env=runtime_env)
 
     with TemporaryDirectory() as results_dir:
         # Create the trainer
