@@ -32,7 +32,7 @@ scaling_config = ScalingConfig(
 
 # Training configuration
 train_config = {
-    "model_location": "pythia-70m",  # This is the path in MinIO under the models bucket
+    "model_location": "model-small",  # This is the path in MinIO under the models bucket
     "batch_size": 2,
     "learning_rate": 5e-5,
     "num_epochs": 1,

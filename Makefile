@@ -1,6 +1,6 @@
 .PHONY: entrypoint install train deploy start_port_forward stop_port_forward
 
-ENVIRONMENT ?= dev
+ENVIRONMENT ?= dev-
 
 entrypoint: deploy train
 
