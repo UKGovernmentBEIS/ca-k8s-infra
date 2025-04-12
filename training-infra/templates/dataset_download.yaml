@@ -13,6 +13,9 @@ spec:
         - /bin/bash
         - -c
         - |
+          # Install Python packages
+          pip3 install huggingface_hub datasets
+
           # Configure MinIO client
           mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
