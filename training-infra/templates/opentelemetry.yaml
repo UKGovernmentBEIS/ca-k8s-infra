@@ -1,0 +1,84 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: opentelemetry-collector
+  namespace: observability-{{ .Values.environment }}
+spec:
+  selector:
+    matchLabels:
+      app: opentelemetry-collector
+  template:
+    metadata:
+      labels:
+        app: opentelemetry-collector
+    spec:
+      containers:
+      - name: opentelemetry-collector
+        image: otel/opentelemetry-collector-contrib:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 4317  # gRPC
+          name: otlp-grpc
+        - containerPort: 4318  # HTTP
+          name: otlp-http
+        command:
+        - /otelcol-contrib
+        args:
+        - --config=/conf/otel-collector-config.yaml
+        volumeMounts:
+        - name: config-volume
+          mountPath: /conf
+        env:
+        - name: ENVIRONMENT
+          value: "{{ .Values.environment }}"
+      volumes:
+      - name: config-volume
+        configMap:
+          name: opentelemetry-config
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: opentelemetry-config
+  namespace: observability-{{ .Values.environment }}
+data:
+  otel-collector-config.yaml: |
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+    exporters:
+      debug:
+        verbosity: detailed
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          exporters: [debug]
+        metrics:
+          receivers: [otlp]
+          exporters: [debug]
+        logs:
+          receivers: [otlp]
+          exporters: [debug]
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: opentelemetry-collector
+  namespace: observability-{{ .Values.environment }}
+spec:
+  ports:
+    - port: 4317
+      targetPort: 4317
+      name: otlp-grpc
+    - port: 4318
+      targetPort: 4318
+      name: otlp-http
+  selector:
+    app: opentelemetry-collector
