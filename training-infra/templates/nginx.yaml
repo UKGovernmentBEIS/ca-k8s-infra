@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: nginx
-  namespace: nginx-app-{{ .Values.environment }}
+  namespace: nginx-app-keda-task-{{ .Values.environment }}
   labels:
     app: nginx
     environment: {{ .Values.environment }}
@@ -37,7 +37,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: nginx
-  namespace: nginx-app-{{ .Values.environment }}
+  namespace: nginx-app-keda-task-{{ .Values.environment }}
   labels:
     app: nginx
     environment: {{ .Values.environment }}

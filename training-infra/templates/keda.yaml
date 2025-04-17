@@ -3,7 +3,7 @@ apiVersion: http.keda.sh/v1alpha1
 kind: HTTPScaledObject
 metadata:
   name: nginx-http-scaler
-  namespace: nginx-app-{{ .Values.environment }}
+  namespace: nginx-app-keda-task-{{ .Values.environment }}
 spec:
   scaleTargetRef:
     name: nginx
