@@ -1,4 +1,6 @@
 {
   "project_slug": "ca-k8s-infra",
-  "include_rbac": false
+  "include_rbac": false,
+  "include_default_deny_egress": false,
+  "include_external_secrets": false
 }

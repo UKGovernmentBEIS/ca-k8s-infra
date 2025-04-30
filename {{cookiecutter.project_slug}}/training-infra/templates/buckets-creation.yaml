@@ -20,10 +20,23 @@ spec:
           mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
         env:
+  {% if cookiecutter.include_external_secrets %}
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: minio-username
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: minio-password
+  {% else %}
         - name: MINIO_ACCESS_KEY
           value: "minioadmin"
         - name: MINIO_SECRET_KEY
           value: "minioadmin"
+  {% endif %}
         - name: ENVIRONMENT
           value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
@@ -62,10 +75,23 @@ spec:
           mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
         env:
+  {% if cookiecutter.include_external_secrets %}
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: minio-username
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: minio-credentials
+              key: minio-password
+  {% else %}
         - name: MINIO_ACCESS_KEY
           value: "minioadmin"
         - name: MINIO_SECRET_KEY
           value: "minioadmin"
+  {% endif %}
         - name: ENVIRONMENT
           value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
