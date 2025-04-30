@@ -1,7 +1,7 @@
 apiVersion: ray.io/v1
 kind: RayCluster
 metadata:
-  name: {{ .Values.rayClusterName }}-{{ .Values.environment }}
+  name: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
 spec:
   rayVersion: '2.42.1'
   enableInTreeAutoscaling: false
@@ -15,7 +15,7 @@ spec:
         containers:
           - name: ray-head
             # preloaded onto nodes
-            image: localhost:5001/training:{{ .Values.environment }}
+            image: localhost:5001/training:{% raw %}{{ .Values.environment }}{% endraw %}
             imagePullPolicy: Always
             ports:
               - containerPort: 6379
@@ -49,7 +49,7 @@ spec:
           containers:
             - name: ray-worker
               # preloaded onto nodes
-              image: localhost:5001/training:{{ .Values.environment }}
+              image: localhost:5001/training:{% raw %}{{ .Values.environment }}{% endraw %}
               imagePullPolicy: Always
               lifecycle:
                 preStop:

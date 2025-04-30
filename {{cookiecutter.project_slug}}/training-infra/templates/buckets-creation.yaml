@@ -7,14 +7,14 @@ spec:
     spec:
       containers:
       - name: internal-buckets
-        image: localhost:5001/job:{{ .Values.environment }}
+        image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
         imagePullPolicy: Always
         command:
         - /bin/bash
         - -c
         - |
           # Configure MinIO client
-          mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+          mc alias set myminio http://minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
           # Create bucket if it doesn't exist
           mc mb myminio/models --ignore-existing
@@ -25,7 +25,7 @@ spec:
         - name: MINIO_SECRET_KEY
           value: "minioadmin"
         - name: ENVIRONMENT
-          value: {{ .Values.environment }}
+          value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
   backoffLimit: 4
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
@@ -56,7 +56,7 @@ spec:
           mv mc /usr/local/bin/
 
           # Configure MinIO client
-          mc alias set myminio http://minio.minio-external-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+          mc alias set myminio http://minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
           # Create bucket if it doesn't exist
           mc mb myminio/models --ignore-existing
@@ -67,7 +67,7 @@ spec:
         - name: MINIO_SECRET_KEY
           value: "minioadmin"
         - name: ENVIRONMENT
-          value: {{ .Values.environment }}
+          value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
   backoffLimit: 4
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed

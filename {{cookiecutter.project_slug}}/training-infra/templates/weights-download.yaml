@@ -1,43 +1,44 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: stanfordnlp-imdb-dataset-sync
+  name: model-sync
 spec:
   template:
     spec:
       containers:
-      - name: dataset-sync
-        image: localhost:5001/job:{{ .Values.environment }}
+      - name: model-sync
+        image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
         imagePullPolicy: Always
         command:
         - /bin/bash
         - -c
         - |
           # Configure MinIO client
-          mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+          mc alias set myminio http://minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
           # Create bucket if it doesn't exist
-          mc mb myminio/datasets --ignore-existing
-          
+          mc mb myminio/models --ignore-existing
+
           # Upload to MinIO
-          mc cp -r /volumes/imdb/ myminio/datasets/imdb/
-          
-          echo "Dataset transfer complete"
+          mc cp -r /volumes/model-small/ myminio/models/model-small/
+
+          # Cleanup
+          rm -rf /tmp/model
         env:
         - name: MINIO_ACCESS_KEY
           value: "minioadmin"
         - name: MINIO_SECRET_KEY
           value: "minioadmin"
         - name: ENVIRONMENT
-          value: {{ .Values.environment }}
+          value: {% raw %}{{ .Values.environment }}{% endraw %}
         volumeMounts:
-        - name: dataset-volume
-          mountPath: /volumes/imdb
+        - name: model-volume
+          mountPath: /volumes/model-small
           readOnly: true
       volumes:
-      - name: dataset-volume
+      - name: model-volume
         hostPath:
-          path: /volumes/huggingface/datasets/imdb
+          path: /volumes/huggingface/models/model-small
           type: Directory
       restartPolicy: Never
   backoffLimit: 4

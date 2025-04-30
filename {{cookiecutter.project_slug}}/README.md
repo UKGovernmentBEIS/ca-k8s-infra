@@ -88,7 +88,7 @@ fs = pyarrow.fs.S3FileSystem(
 
 ## Docker Images
 
-All dockerfiles in the `training-infra/dockerfiles` repo are built externally and pushed with the name of the dockerfile. Any updates to these files in a PR will automatically cause the images to be built and pushed. They can then be accessed with e.g. `localhost:5001/<dockerfile_name>:{{ .Values.environment }}` by helm templates.
+All dockerfiles in the `training-infra/dockerfiles` repo are built externally and pushed with the name of the dockerfile. Any updates to these files in a PR will automatically cause the images to be built and pushed. They can then be accessed with e.g. `localhost:5001/<dockerfile_name>:{% raw %}{{ .Values.environment }}{% endraw %}` by helm templates.
 
 ## Developer Notes
 

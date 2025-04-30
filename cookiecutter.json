@@ -1,0 +1,4 @@
+{
+  "project_slug": "ca-k8s-infra",
+  "include_rbac": false
+}
