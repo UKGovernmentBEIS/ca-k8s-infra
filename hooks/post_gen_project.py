@@ -3,6 +3,9 @@ import os
 import shutil
 import yaml
 import json
+import logging
+
+log = logging.getLogger(__name__)
 
 
 def copy_overlay(project_dir: str, overlay_name: str):
@@ -26,11 +29,13 @@ def copy_overlay(project_dir: str, overlay_name: str):
             # overwrite any base file with the overlay
             shutil.copy2(src_file, dst_file)
 
+
 def rm_if_exists(path: str):
     if os.path.isdir(path):
         shutil.rmtree(path)
     elif os.path.isfile(path):
         os.remove(path)
+
 
 def rm_empty_files(path: str):
     if os.path.isdir(path):
@@ -42,11 +47,12 @@ def rm_empty_files(path: str):
                         try:
                             content = yaml.safe_load_all(f.read())
                             if all(doc is None for doc in content):
-                                print("Removing empty file:", full_path)
+                                log.info("Removing empty file:", full_path)
                                 os.remove(full_path)
                         except yaml.YAMLError:
                             # We cannot parse Helm template syntax
                             continue
+
 
 def get_cookiecutter_context():
     # Extract variables from environment
@@ -55,6 +61,7 @@ def get_cookiecutter_context():
 """
     return json.loads(context_str)
 
+
 def main():
     # Cookiecutter runs this script with cwd = the generated project root
     project_dir = os.getcwd()
@@ -62,16 +69,17 @@ def main():
     # Read the flags that Cookiecutter set for us
     # Merge in any overlays the user asked for
     context = get_cookiecutter_context()
-    includes = [key for key in context if key.startswith("include_") and context[key]]
+    includes = [key for key in context if key != "project_slug" and context[key]]
     for include in includes:
-        print(f"Processing overlay: {include}")
-        copy_overlay(project_dir, include[8:])
+        log.info(f"Processing overlay: {include}")
+        copy_overlay(project_dir, include)
 
     # Remove any empty YAML files
     rm_empty_files(project_dir)
 
     # Now get rid of the entire overlays/ folder
     rm_if_exists(os.path.join(project_dir, "overlays"))
+
 
 if __name__ == "__main__":
     main()

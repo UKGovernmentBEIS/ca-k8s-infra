@@ -20,7 +20,7 @@ spec:
           mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
         env:
-  {% if cookiecutter.include_external_secrets %}
+  {% if cookiecutter.external_secrets %}
         - name: MINIO_ACCESS_KEY
           valueFrom:
             secretKeyRef:
@@ -75,7 +75,7 @@ spec:
           mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
         env:
-  {% if cookiecutter.include_external_secrets %}
+  {% if cookiecutter.external_secrets %}
         - name: MINIO_ACCESS_KEY
           valueFrom:
             secretKeyRef:

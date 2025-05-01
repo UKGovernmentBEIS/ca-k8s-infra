@@ -25,7 +25,7 @@ spec:
           # Cleanup
           rm -rf /tmp/model
         env:
-  {% if cookiecutter.include_external_secrets %}
+  {% if cookiecutter.external_secrets %}
         - name: MINIO_ACCESS_KEY
           valueFrom:
             secretKeyRef:
@@ -83,7 +83,7 @@ spec:
           
           echo "Dataset transfer complete"
         env:
-  {% if cookiecutter.include_external_secrets %}
+  {% if cookiecutter.external_secrets %}
         - name: MINIO_ACCESS_KEY
           valueFrom:
             secretKeyRef:

@@ -1,7 +1,8 @@
 {
   "project_slug": "ca-k8s-infra",
   "cilium_network_policies": false,
-  "include_rbac": false,
-  "include_default_deny_egress": false,
-  "include_external_secrets": false
+  "egress_filtering": false,
+  "rbac": false,
+  "default_deny_egress": false,
+  "external_secrets": false
 }
