@@ -2,6 +2,7 @@
 import os
 import shutil
 import yaml
+import json
 
 
 def copy_overlay(project_dir: str, overlay_name: str):
@@ -33,7 +34,7 @@ def rm_if_exists(path: str):
 
 def rm_empty_files(path: str):
     if os.path.isdir(path):
-        for root, dirs, files in os.walk(path):
+        for root, _, files in os.walk(path):
             for fname in files:
                 if fname.endswith(".yaml"):
                     full_path = os.path.join(root, fname)
@@ -46,9 +47,13 @@ def rm_empty_files(path: str):
                         except yaml.YAMLError:
                             # We cannot parse Helm template syntax
                             continue
-    elif os.path.isfile(path):
-        if os.path.getsize(path) == 0:
-            os.remove(path)
+
+def get_cookiecutter_context():
+    # Extract variables from environment
+    context_str = r"""
+{{ cookiecutter | jsonify }}
+"""
+    return json.loads(context_str)
 
 def main():
     # Cookiecutter runs this script with cwd = the generated project root
@@ -56,7 +61,7 @@ def main():
 
     # Read the flags that Cookiecutter set for us
     # Merge in any overlays the user asked for
-    includes = [key for key in '{{ ' '.join(cookiecutter.keys()) }}'.split(' ') if key.startswith("include_")]
+    includes = [key for key in get_cookiecutter_context() if key.startswith("include_")]
     for include in includes:
         copy_overlay(project_dir, include[8:])
 
