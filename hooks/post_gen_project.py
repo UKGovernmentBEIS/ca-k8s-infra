@@ -61,8 +61,10 @@ def main():
 
     # Read the flags that Cookiecutter set for us
     # Merge in any overlays the user asked for
-    includes = [key for key in get_cookiecutter_context() if key.startswith("include_")]
+    context = get_cookiecutter_context()
+    includes = [key for key in context if key.startswith("include_") and context[key]]
     for include in includes:
+        print(f"Processing overlay: {include}")
         copy_overlay(project_dir, include[8:])
 
     # Remove any empty YAML files
