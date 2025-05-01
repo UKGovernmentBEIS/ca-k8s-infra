@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 import os
 import shutil
+import yaml
+
 
 def copy_overlay(project_dir: str, overlay_name: str):
     """
@@ -29,6 +31,25 @@ def rm_if_exists(path: str):
     elif os.path.isfile(path):
         os.remove(path)
 
+def rm_empty_files(path: str):
+    if os.path.isdir(path):
+        for root, dirs, files in os.walk(path):
+            for fname in files:
+                if fname.endswith(".yaml"):
+                    full_path = os.path.join(root, fname)
+                    with open(full_path, 'rt') as f:
+                        try:
+                            content = yaml.safe_load_all(f.read())
+                            if all(doc is None for doc in content):
+                                print("Removing empty file:", full_path)
+                                os.remove(full_path)
+                        except yaml.YAMLError:
+                            # We cannot parse Helm template syntax
+                            continue
+    elif os.path.isfile(path):
+        if os.path.getsize(path) == 0:
+            os.remove(path)
+
 def main():
     # Cookiecutter runs this script with cwd = the generated project root
     project_dir = os.getcwd()
@@ -38,6 +59,9 @@ def main():
     includes = [key for key in '{{ ' '.join(cookiecutter.keys()) }}'.split(' ') if key.startswith("include_")]
     for include in includes:
         copy_overlay(project_dir, include[8:])
+
+    # Remove any empty YAML files
+    rm_empty_files(project_dir)
 
     # Now get rid of the entire overlays/ folder
     rm_if_exists(os.path.join(project_dir, "overlays"))

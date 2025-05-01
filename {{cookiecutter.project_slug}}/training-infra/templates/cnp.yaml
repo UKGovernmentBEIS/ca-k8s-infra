@@ -1,0 +1,25 @@
+{% if cookiecutter.cilium_network_policies %}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-deny-egress
+spec:
+  # Apply to all pods in the cluster (default deny)
+  endpointSelector: {}
+  egress:
+    # Allow DNS queries (required for service discovery)
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+          rules:
+            dns:
+              - matchPattern: "*"
+---
+{% endif %}

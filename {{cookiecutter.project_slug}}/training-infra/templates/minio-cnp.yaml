@@ -1,0 +1,33 @@
+{% if cookiecutter.cilium_network_policies %}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: minio-access-policy
+spec:
+  # Apply to all pods
+  endpointSelector: {}
+  egress:
+    # Allow traffic to all MinIO instances
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-external-{% raw %}{{ .Values.environment }}{% endraw %}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    # Allow DNS lookups for services in the cluster
+    - toFQDNs:
+        - matchPattern: "minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local"
+        - matchPattern: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local"
+    # Allow raw IP access to cluster services
+    - toCIDR:
+        - 10.0.0.0/8
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+{% endif %}

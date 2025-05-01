@@ -1,12 +1,12 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: internal-buckets
+  name: model-sync
 spec:
   template:
     spec:
       containers:
-      - name: internal-buckets
+      - name: model-sync
         image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
         imagePullPolicy: Always
         command:
@@ -18,7 +18,12 @@ spec:
 
           # Create bucket if it doesn't exist
           mc mb myminio/models --ignore-existing
-          mc mb myminio/datasets --ignore-existing
+
+          # Upload to MinIO
+          mc cp -r /volumes/model-small/ myminio/models/model-small/
+
+          # Cleanup
+          rm -rf /tmp/model
         env:
   {% if cookiecutter.include_external_secrets %}
         - name: MINIO_ACCESS_KEY
@@ -39,6 +44,15 @@ spec:
   {% endif %}
         - name: ENVIRONMENT
           value: {% raw %}{{ .Values.environment }}{% endraw %}
+        volumeMounts:
+        - name: model-volume
+          mountPath: /volumes/model-small
+          readOnly: true
+      volumes:
+      - name: model-volume
+        hostPath:
+          path: /volumes/huggingface/models/model-small
+          type: Directory
       restartPolicy: Never
   backoffLimit: 4
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
@@ -46,34 +60,28 @@ spec:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: external-buckets
+  name: stanfordnlp-imdb-dataset-sync
 spec:
   template:
     spec:
       containers:
-      - name: external-buckets
-        image: ubuntu:20.04
+      - name: dataset-sync
+        image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
+        imagePullPolicy: Always
         command:
         - /bin/bash
         - -c
         - |
-          # Install required packages
-          apt-get update && apt-get install -y \
-            wget \
-            curl
-
-
-          # Install MinIO client
-          wget https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x mc
-          mv mc /usr/local/bin/
-
           # Configure MinIO client
-          mc alias set myminio http://minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+          mc alias set myminio http://minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
           # Create bucket if it doesn't exist
-          mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
+          
+          # Upload to MinIO
+          mc cp -r /volumes/imdb/ myminio/datasets/imdb/
+          
+          echo "Dataset transfer complete"
         env:
   {% if cookiecutter.include_external_secrets %}
         - name: MINIO_ACCESS_KEY
@@ -94,6 +102,15 @@ spec:
   {% endif %}
         - name: ENVIRONMENT
           value: {% raw %}{{ .Values.environment }}{% endraw %}
+        volumeMounts:
+        - name: dataset-volume
+          mountPath: /volumes/imdb
+          readOnly: true
+      volumes:
+      - name: dataset-volume
+        hostPath:
+          path: /volumes/huggingface/datasets/imdb
+          type: Directory
       restartPolicy: Never
   backoffLimit: 4
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
@@ -102,35 +119,21 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: external-buckets-job-policy
+  name: download-jobs-policy
 spec:
-  # Apply to the external-buckets job
+  # Apply to all download jobs
   endpointSelector:
-    matchLabels:
-      job-name: external-buckets
+    matchExpressions:
+      - {key: job-name, operator: In, values: [stanfordnlp-imdb-dataset-sync, pythia-70m-model-sync]}
   egress:
-    # Allow access to package repositories for apt
+    # Allow access to Hugging Face API and related services for downloads
     - toFQDNs:
-        - matchPattern: "*.ubuntu.com"
-        - matchPattern: "*.debian.org"
-        - matchPattern: "*.archive.ubuntu.com"
-        - matchPattern: "archive.ubuntu.com"
-        - matchPattern: "security.ubuntu.com"
-        - matchPattern: "ppa.launchpad.net"
-      toPorts:
-        - ports:
-            - port: "80"
-              protocol: TCP
-            - port: "443"
-              protocol: TCP
-    # Allow access to MinIO client download
-    - toFQDNs:
-        - matchPattern: "dl.min.io"
+        - matchName: "huggingface.co"
+        - matchPattern: "*.huggingface.co"
+        - matchPattern: "*.hf.co"
       toPorts:
         - ports:
             - port: "443"
-              protocol: TCP
-            - port: "80"
               protocol: TCP
 ---
 {% endif %}
