@@ -75,10 +75,23 @@ spec:
               mc admin policy attach myminio team-beta-policy --user team-beta
               echo "MinIO RBAC setup complete"
           env:
+    {% if cookiecutter.external_secrets %}
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-username
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-password
+    {% else %}
             - name: MINIO_ACCESS_KEY
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
               value: "minioadmin"
+    {% endif %}
             - name: ENVIRONMENT
               value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
