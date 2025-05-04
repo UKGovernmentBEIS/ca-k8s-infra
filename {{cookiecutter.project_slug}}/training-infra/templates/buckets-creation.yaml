@@ -49,7 +49,6 @@ spec:
             wget \
             curl
 
-
           # Install MinIO client
           wget https://dl.min.io/client/mc/release/linux-amd64/mc
           chmod +x mc
@@ -61,6 +60,49 @@ spec:
           # Create bucket if it doesn't exist
           mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
+
+  {% if cookiecutter.rbac %}
+          # Create policy file
+          cat > /tmp/bucket_policy.json << EOF
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AllowListDatasetsBucket",
+                "Effect": "Allow",
+                "Action": ["s3:ListBucket"],
+                "Resource": "arn:aws:s3:::datasets"
+              },
+              {
+                "Sid": "AllowReadFromDatasets",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject",
+                  "s3:GetObjectVersion"
+                ],
+                "Resource": "arn:aws:s3:::datasets/*"
+              },
+              {
+                "Sid": "AllowWriteToModels",
+                "Effect": "Allow",
+                "Action": [
+                  "s3:PutObject"
+                ],
+                "Resource": "arn:aws:s3:::models/*"
+              }
+            ]
+          }
+          EOF
+
+          # Create policy in MinIO
+          mc admin policy add myminio bucket-policy /tmp/bucket_policy.json
+
+          # Create MinIO user for Ray worker
+          mc admin user add myminio ray-worker ray-worker-password
+
+          # Assign policy to user
+          mc admin policy attach myminio bucket-policy --user ray-worker
+  {% endif %}
         env:
         - name: MINIO_ACCESS_KEY
           value: "minioadmin"
