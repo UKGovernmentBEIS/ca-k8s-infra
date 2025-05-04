@@ -23,6 +23,7 @@ spec:
         args:
         - "--btf=/sys/kernel/btf/vmlinux"
         - "--export-allowlist={\"event_set\":[\"PROCESS_EXEC\",\"PROCESS_EXIT\",\"PROCESS_KPROBE\"]}"
+        - --tracing-policy-dir=/etc/tetragon
         resources:
           limits:
             cpu: {% raw %}{{ .Values.tetragon.resources.limits.cpu | default "500m" }}{% endraw %}
@@ -43,7 +44,7 @@ spec:
         - name: run-dir
           mountPath: /var/run/cilium
         - name: config-volume
-          mountPath: /etc/tetragon/tetragon.tp.d
+          mountPath: /etc/tetragon/tetragon
       volumes:
       - name: host-procfs
         hostPath:
