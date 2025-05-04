@@ -1,137 +1,167 @@
-# templates/tetragon.yaml
+{% if cookiecutter.file_integrity %}
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: tetragon-monitor
+  labels:
+    app: tetragon-monitor
+spec:
+  selector:
+    matchLabels:
+      app: tetragon-monitor
+  template:
+    metadata:
+      labels:
+        app: tetragon-monitor
+    spec:
+      hostPID: true
+      containers:
+      - name: tetragon
+        image: quay.io/cilium/tetragon:v1.4.0
+        imagePullPolicy: IfNotPresent
+        command: ["tetragon"]
+        args:
+        - "--btf=/sys/kernel/btf/vmlinux"
+        - "--export-allowlist={\"event_set\":[\"PROCESS_EXEC\",\"PROCESS_EXIT\",\"PROCESS_KPROBE\"]}"
+        resources:
+          limits:
+            cpu: {% raw %}{{ .Values.tetragon.resources.limits.cpu | default "500m" }}{% endraw %}
+            memory: {% raw %}{{ .Values.tetragon.resources.limits.memory | default "500Mi" }}{% endraw %}
+          requests:
+            cpu: {% raw %}{{ .Values.tetragon.resources.requests.cpu | default "100m" }}{% endraw %}
+            memory: {% raw %}{{ .Values.tetragon.resources.requests.memory | default "100Mi" }}{% endraw %}
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-procfs
+          mountPath: /procHost
+          readOnly: true
+        - name: bpf-fs
+          mountPath: /sys/fs/bpf
+        - name: kernel-debug
+          mountPath: /sys/kernel/debug
+        - name: run-dir
+          mountPath: /var/run/cilium
+        - name: config-volume
+          mountPath: /etc/tetragon
+      volumes:
+      - name: host-procfs
+        hostPath:
+          path: /proc
+          type: Directory
+      - name: bpf-fs
+        hostPath:
+          path: /sys/fs/bpf
+          type: DirectoryOrCreate
+      - name: kernel-debug
+        hostPath:
+          path: /sys/kernel/debug
+          type: DirectoryOrCreate
+      - name: run-dir
+        hostPath:
+          path: /var/run/cilium
+          type: DirectoryOrCreate
+      - name: config-volume
+        configMap:
+          name: tetragon-file-monitoring-policy
+          optional: false
 ---
 apiVersion: v1
-kind: Namespace
+kind: ConfigMap
 metadata:
-  name: {% raw %}{{ .Values.tetragon.namespace | default "kube-system" }}{% endraw %}
-  labels:
-    app.kubernetes.io/name: tetragon
-    helm.sh/chart: {% raw %}{{ .Chart.Name }}-{{ .Chart.Version }}{% endraw %}
-    app.kubernetes.io/instance: {% raw %}{{ .Release.Name }}{% endraw %}
-    app.kubernetes.io/managed-by: {% raw %}{{ .Release.Service }}{% endraw %}
-
----
-apiVersion: helm.cattle.io/v1
-kind: HelmChart
-metadata:
-  name: tetragon
-  namespace: {% raw %}{{ .Values.tetragon.namespace | default "kube-system" }}{% endraw %}
-spec:
-  chart: tetragon
-  version: "1.4.0"
-  repo: "https://helm.cilium.io"
-  targetNamespace: {% raw %}{{ .Values.tetragon.namespace | default "kube-system" }}{% endraw %}
-  valuesContent: |-
-    tetragon:
-      enabled: true
-      hostNetwork: true
-      hostProcPath: /proc
-      mountHostProcfs: true
-      enableProcessCred: true
-      enableK8sAPI: true
-      exportAllowlist: |-
-        {"event_set": ["PROCESS_EXEC", "PROCESS_EXIT", "PROCESS_KPROBE"]}
-      resources:
-        limits:
-          cpu: {% raw %}{{ .Values.tetragon.resources.limits.cpu | default "500m" }}{% endraw %}
-          memory: {% raw %}{{ .Values.tetragon.resources.limits.memory | default "500Mi" }}{% endraw %}
-        requests:
-          cpu: {% raw %}{{ .Values.tetragon.resources.requests.cpu | default "100m" }}{% endraw %}
-          memory: {% raw %}{{ .Values.tetragon.resources.requests.memory | default "100Mi" }}{% endraw %}
-    
-    operator:
-      enabled: true
-
----
-apiVersion: cilium.io/v2
-kind: TracingPolicy
-metadata:
-  name: "file-integrity-monitoring"
-  namespace: {% raw %}{{ .Values.tetragon.namespace | default "kube-system" }}{% endraw %}
-spec:
-  kprobes:
-  # Monitor file access permissions (read/write)
-  - call: "security_file_permission"
-    syscall: false
-    return: true
-    args:
-    - index: 0
-      type: "file"
-    - index: 1
-      type: "int"
-    returnArg:
-      index: 0
-      type: "int"
-    returnArgAction: "Post"
-    selectors:
-    - matchArgs:      
-      - index: 0
-        operator: "Prefix"
-        values:
-        {% raw %}{{- range .Values.tetragon.fileMonitoring.protectedPaths }}
-        - "{{ . }}"
-        {{- end }}{% endraw %}
-      - index: 1
-        operator: "Equal"
-        values:
-        - "2"  # MAY_WRITE
-      {% raw %}{{- if .Values.tetragon.fileMonitoring.enforcePolicy }}
-      matchActions:
-      - action: Sigkill
-      {{- end }}{% endraw %}
-  
-  # Monitor file modifications via memory mapping
-  - call: "security_mmap_file"
-    syscall: false
-    return: true
-    args:
-    - index: 0
-      type: "file"
-    - index: 1
-      type: "uint32"
-    - index: 2
-      type: "nop"
-    returnArg:
-      index: 0
-      type: "int"
-    returnArgAction: "Post"
-    selectors:
-    - matchArgs:
-      - index: 0
-        operator: "Prefix"
-        values:
-        {% raw %}{{- range .Values.tetragon.fileMonitoring.protectedPaths }}
-        - "{{ . }}"
-        {{- end }}{% endraw %}
-      - index: 1
-        operator: "Mask"
-        values:
-        - "2"  # PROT_WRITE
-      {% raw %}{{- if .Values.tetragon.fileMonitoring.enforcePolicy }}
-      matchActions:
-      - action: Sigkill
-      {{- end }}{% endraw %}
-  
-  # Monitor file modifications via truncate
-  - call: "security_path_truncate"
-    syscall: false
-    return: true
-    args:
-    - index: 0
-      type: "path"
-    returnArg:
-      index: 0
-      type: "int"
-    returnArgAction: "Post"
-    selectors:
-    - matchArgs:
-      - index: 0
-        operator: "Prefix"
-        values:
-        {% raw %}{{- range .Values.tetragon.fileMonitoring.protectedPaths }}
-        - "{{ . }}"
-        {{- end }}{% endraw %}
-      {% raw %}{{- if .Values.tetragon.fileMonitoring.enforcePolicy }}
-      matchActions:
-      - action: Sigkill
-      {{- end }}{% endraw %}
+  name: tetragon-file-monitoring-policy
+data:
+  tetragon-file-monitoring.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "file-integrity-monitoring"
+    spec:
+      kprobes:
+      # Monitor file access permissions (read/write)
+      - call: "security_file_permission"
+        syscall: false
+        return: true
+        args:
+        - index: 0
+          type: "file"
+        - index: 1
+          type: "int"
+        returnArg:
+          index: 0
+          type: "int"
+        returnArgAction: "Post"
+        selectors:
+        - matchArgs:      
+          - index: 0
+            operator: "Prefix"
+            values:
+            {% raw %}{{- range .Values.tetragon.fileMonitoring.protectedPaths }}
+            - "{{ . }}"
+            {{- end }}{% endraw %}
+          - index: 1
+            operator: "Equal"
+            values:
+            - "2"  # MAY_WRITE
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.enforcePolicy }}
+          matchActions:
+          - action: Sigkill
+          {{- end }}{% endraw %}
+      
+      # Monitor file modifications via memory mapping
+      - call: "security_mmap_file"
+        syscall: false
+        return: true
+        args:
+        - index: 0
+          type: "file"
+        - index: 1
+          type: "uint32"
+        - index: 2
+          type: "nop"
+        returnArg:
+          index: 0
+          type: "int"
+        returnArgAction: "Post"
+        selectors:
+        - matchArgs:
+          - index: 0
+            operator: "Prefix"
+            values:
+            {% raw %}{{- range .Values.tetragon.fileMonitoring.protectedPaths }}
+            - "{{ . }}"
+            {{- end }}{% endraw %}
+          - index: 1
+            operator: "Mask"
+            values:
+            - "2"  # PROT_WRITE
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.enforcePolicy }}
+          matchActions:
+          - action: Sigkill
+          {{- end }}{% endraw %}
+      
+      # Monitor file modifications via truncate
+      - call: "security_path_truncate"
+        syscall: false
+        return: true
+        args:
+        - index: 0
+          type: "path"
+        returnArg:
+          index: 0
+          type: "int"
+        returnArgAction: "Post"
+        selectors:
+        - matchArgs:
+          - index: 0
+            operator: "Prefix"
+            values:
+            {% raw %}{{- range .Values.tetragon.fileMonitoring.protectedPaths }}
+            - "{{ . }}"
+            {{- end }}{% endraw %}
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.enforcePolicy }}
+          matchActions:
+          - action: Sigkill
+          {{- end }}{% endraw %}
+{% endif %}

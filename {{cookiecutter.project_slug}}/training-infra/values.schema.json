@@ -1,45 +1,32 @@
 {
-    "$schema": "http://json-schema.org/draft-07/schema#",
-    "type": "object",
-    "properties": {
-      "rayClusterName": {
-        "type": "string"
-      },{% if cookiecutter.honeypot %}
-      "honeypotWebhookUrl": {
-        "type": "string"
-      },{% endif %}
-      "environment": {
-        "type": "string"
-      }{% if cookiecutter.file_integrity %},
-      "tetragon": {
-        "type": "object",
-        "properties": {
-          "namespace": {
-            "type": "string",
-            "description": "Namespace where Tetragon will be deployed"
-          },
-          "chartRepo": {
-            "type": "string",
-            "description": "Helm chart repository URL"
-          },
-          "chartVersion": {
-            "type": "string",
-            "description": "Tetragon Helm chart version"
-          },
-          "resources": {
-            "type": "object",
-            "properties": {
-              "limits": {
-                "type": "object",
-                "properties": {
-                  "cpu": {
-                    "type": "string",
-                    "description": "CPU resource limit"
-                  },
-                  "memory": {
-                    "type": "string",
-                    "description": "Memory resource limit"
-                  }
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "properties": {
+    "rayClusterName": {
+      "type": "string"
+    },{% if cookiecutter.honeypot %}
+    "honeypotWebhookUrl": {
+      "type": "string"
+    },{% endif %}
+    "environment": {
+      "type": "string"
+    }{% if cookiecutter.file_integrity %},
+    "tetragon": {
+      "type": "object",
+      "properties": {
+        "resources": {
+          "type": "object",
+          "properties": {
+            "limits": {
+              "type": "object",
+              "properties": {
+                "cpu": {
+                  "type": "string",
+                  "description": "CPU resource limit"
+                },
+                "memory": {
+                  "type": "string",
+                  "description": "Memory resource limit"
                 }
               },
               "requests": {

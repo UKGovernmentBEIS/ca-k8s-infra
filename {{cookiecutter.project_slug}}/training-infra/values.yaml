@@ -3,9 +3,6 @@ rayClusterName: raycluster
 honeypotWebhookUrl: https://webhook.site/74bf43cc-f7fb-4f65-b643-7d23640331cd
 {% endif %}{% if cookiecutter.file_integrity %}
 tetragon:
-  # Namespace where Tetragon will be deployed
-  namespace: "kube-system"
-  
   # Resource allocation
   resources:
     limits:
