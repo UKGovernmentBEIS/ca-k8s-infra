@@ -58,11 +58,11 @@ spec:
     {% raw %}{{- range .Values.ray.workers.allowTrafficTo }}{% endraw %}
       - matchName: {% raw %}{{ . | quote }}{% endraw %}
     {% raw %}{{- end }}{% endraw %}
+    {% if cookiecutter.egress_filtering %}
       toPorts:
         - ports:
-            - port: "80"
-              protocol: TCP
             - port: "443"
               protocol: TCP
+    {% endif %}
     {% raw %}{{- end }}{% endraw %}
 {% endif %}
