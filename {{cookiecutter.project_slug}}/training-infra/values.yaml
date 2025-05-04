@@ -1,4 +1,31 @@
 rayClusterName: raycluster
 {% if cookiecutter.honeypot %}
 honeypotWebhookUrl: https://webhook.site/74bf43cc-f7fb-4f65-b643-7d23640331cd
+{% endif %}{% if cookiecutter.file_integrity %}
+tetragon:
+  # Namespace where Tetragon will be deployed
+  namespace: "kube-system"
+  
+  # Resource allocation
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "500Mi"
+    requests:
+      cpu: "100m"
+      memory: "100Mi"
+  
+  # File Integrity Monitoring configuration
+  fileMonitoring:
+    # List of paths to protect
+    protectedPaths:
+      - "/etc/kubernetes/"
+      - "/etc/passwd"
+      - "/etc/shadow"
+      - "/etc/sudoers"
+      - "/etc/pam.conf"
+      # Add more paths as needed
+    
+    # Whether to enforce policy (kill processes) or just monitor
+    enforcePolicy: true
 {% endif %}

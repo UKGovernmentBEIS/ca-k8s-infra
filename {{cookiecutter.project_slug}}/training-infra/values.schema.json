@@ -10,12 +10,78 @@
       },{% endif %}
       "environment": {
         "type": "string"
-      }
-    },
-    "required": [
-      "rayClusterName",
-      "environment"
-    ],
-    "additionalProperties": false
-  }
-  
+      }{% if cookiecutter.file_integrity %},
+      "tetragon": {
+        "type": "object",
+        "properties": {
+          "namespace": {
+            "type": "string",
+            "description": "Namespace where Tetragon will be deployed"
+          },
+          "chartRepo": {
+            "type": "string",
+            "description": "Helm chart repository URL"
+          },
+          "chartVersion": {
+            "type": "string",
+            "description": "Tetragon Helm chart version"
+          },
+          "resources": {
+            "type": "object",
+            "properties": {
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "cpu": {
+                    "type": "string",
+                    "description": "CPU resource limit"
+                  },
+                  "memory": {
+                    "type": "string",
+                    "description": "Memory resource limit"
+                  }
+                }
+              },
+              "requests": {
+                "type": "object",
+                "properties": {
+                  "cpu": {
+                    "type": "string",
+                    "description": "CPU resource request"
+                  },
+                  "memory": {
+                    "type": "string",
+                    "description": "Memory resource request"
+                  }
+                }
+              }
+            }
+          },
+          "fileMonitoring": {
+            "type": "object",
+            "properties": {
+              "protectedPaths": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of file paths to monitor for unauthorized changes"
+              },
+              "enforcePolicy": {
+                "type": "boolean",
+                "description": "Whether to enforce policy (terminate processes) or just monitor"
+              }
+            },
+            "required": ["protectedPaths"]
+          }
+        },
+        "required": ["fileMonitoring"]
+      }{% endif %}
+  },
+  "required": [
+    "rayClusterName",
+    "environment"{% if cookiecutter.file_integrity %},
+    "tetragon"{% endif %}
+  ],
+  "additionalProperties": false
+}
