@@ -64,13 +64,13 @@ spec:
           type: DirectoryOrCreate
       - name: config-volume
         configMap:
-          name: tetragon-file-monitoring-policy
+          name: tetragon-policies
           optional: false
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: tetragon-file-monitoring-policy
+  name: tetragon-policies
 data:
   tetragon-file-monitoring.yaml: |
     apiVersion: cilium.io/v1alpha1
@@ -202,4 +202,215 @@ data:
           matchActions:
           - action: Sigkill
           {{- end }}{% endraw %}
-{% endif %}
+
+  tetragon-monitor-egress.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "tetragon-monitor-egress"
+    spec:
+      kprobes:
+        - call: "tcp_connect"
+          syscall: false
+          args:
+            - index: 0
+              type: "sock"
+          selectors:
+            - matchArgs:
+                - index: 0
+                  operator: "NotDAddr"
+                  values:
+                  {% raw %}{{- range .Values.tetragon.egress.allowedAddresses }}
+                  - "{{ . }}"
+                  {{- end }}{% endraw %}
+
+  tetragon-prevent-links.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "prevent-links-to-sensitive-files"
+    spec:
+      kprobes:
+        - call: "sys_linkat"
+          syscall: true
+          args:
+            - index: 0
+              type: "int"
+            - index: 1
+              type: "string"
+            - index: 2
+              type: "int"
+            - index: 3
+              type: "string"
+            - index: 4
+              type: "int"
+          selectors:
+            - matchArgs:
+                - index: 1
+                  operator: "Equal"
+                  values:
+                  {% raw %}{{- range .Values.tetragon.filelinks.protectedPaths }}
+                  - "{{ . }}"
+                  {{- end }}{% endraw %}
+              {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+              matchActions:
+                - action: Override
+                  argError: -1
+              {{- end }}{% endraw %}
+        - call: "sys_symlinkat"
+          syscall: true
+          args:
+            - index: 0
+              type: "string"
+            - index: 1
+              type: "int"
+            - index: 2
+              type: "string"
+          selectors:
+            - matchArgs:
+                - index: 0
+                  operator: "Equal"
+                  values:
+                  {% raw %}{{- range .Values.tetragon.filelinks.protectedPaths }}
+                  - "{{ . }}"
+                  {{- end }}{% endraw %}
+              {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+              matchActions:
+                - action: Override
+                  argError: -1
+              {{- end }}{% endraw %}
+
+  # Taken and modified (to also catch ssh/scp executions) from here: https://github.com/cilium/tetragon/blob/main/examples/policylibrary/sshd.yaml
+  tetragon-prevent-ssh.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "deny-sshd-ssh-scp"
+    spec:
+      options:
+        - name: "disable-kprobe-multi"
+          value: "1"
+      kprobes:
+        - call: "sk_alloc"
+          syscall: false
+          return: true
+          args:
+            - index: 1
+              type: int
+              label: "Family"
+          returnArg:
+            index: 0
+            type: sock
+          returnArgAction: TrackSock
+          selectors:
+            - matchArgs:
+                - index: 1
+                  operator: "Equal"
+                  values:
+                    - "2"
+              matchBinaries:
+                - operator: "In"
+                  values:
+                    - "/usr/sbin/sshd"
+                    - "/usr/sbin/tcpserver"
+              {% raw %}{{- if .Values.tetragon.preventSshd }}
+              matchActions:
+                - action: Sigkill
+              {{- end }}{% endraw %}
+        - call: "sk_free"
+          syscall: false
+          args:
+            - index: 0
+              type: sock
+          selectors:
+            - matchArgs:
+                - index: 0
+                  operator: "Family"
+                  values:
+                    - "AF_INET"
+              matchActions:
+                - action: UntrackSock
+                  argSock: 0
+              matchBinaries:
+                - operator: "In"
+                  values:
+                    - "/usr/sbin/sshd"
+                    - "/usr/sbin/tcpserver"
+              {% raw %}{{- if .Values.tetragon.preventSshd }}
+              matchActions:
+                - action: Sigkill
+              {{- end }}{% endraw %}
+        - call: "tcp_set_state"
+          syscall: false
+          args:
+            - index: 0
+              type: "sock"
+            - index: 1
+              type: "int"
+              label: "state"
+          selectors:
+            - matchArgs:
+                - index: 0
+                  operator: "State"
+                  values:
+                    - "TCP_SYN_RECV"
+                - index: 1
+                  operator: "Equal"
+                  values:
+                    - "1"
+              matchBinaries:
+                - operator: "In"
+                  values:
+                    - "/usr/sbin/sshd"
+                    - "/usr/sbin/tcpserver"
+              {% raw %}{{- if .Values.tetragon.preventSshd }}
+              matchActions:
+                - action: Sigkill
+              {{- end }}{% endraw %}
+        - call: "tcp_close"
+          syscall: false
+          args:
+            - index: 0
+              type: "sock"
+        - call: "tcp_create_openreq_child"
+          syscall: false
+          return: true
+          args:
+            - index: 0
+              type: "sock"
+          returnArg:
+            index: 0
+            type: sock
+          returnArgAction: TrackSock
+          selectors:
+            - matchBinaries:
+                - operator: "In"
+                  values:
+                    - "/usr/sbin/sshd"
+                    - "/usr/sbin/tcpserver"
+              {% raw %}{{- if .Values.tetragon.preventSshd }}
+              matchActions:
+                - action: Sigkill
+              {{- end }}{% endraw %}
+        - call: "security_bprm_creds_from_file"
+          syscall: false
+          args:
+            - index: 0
+              type: "nop"
+            - index: 1
+              type: "file"
+          selectors:
+            - matchArgs:
+                # Of course, this doesn't prevent the agent from copying over these binaries and executing them at another path...
+                - index: 1
+                  operator: "Equal"
+                  values:
+                    - "/usr/bin/ssh"
+                    - "/bin/ssh"
+                    - "/usr/bin/scp"
+                    - "/bin/scp"
+              {% raw %}{{- if .Values.tetragon.preventSsh }}
+              matchActions:
+                - action: Sigkill
+              {{- end }}{% endraw %}
+    {% endif %}

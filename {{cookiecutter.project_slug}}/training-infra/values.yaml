@@ -45,4 +45,28 @@ tetragon:
     # Whether to kill processes when protected files are read/written to or just monitor
     sigkillProtectedRead: false
     sigkillProtectedWrite: true
+
+  egress:
+    allowedAddresses:
+      - "127.0.0.1"
+      # Also allows CIDR notation, could be extended to pod CIDR range
+
+  # NOTE: Covers both hardlinks and symlinks.
+  filelinks:
+    prevent: true
+    protectedPaths:  # Paths which may not be linked to.
+      - "/"
+      - "/etc"
+      - "/etc/"
+      - "/etc/passwd"
+      - "/etc/shadow"
+      - "/etc/sudoers"
+      - "/etc/pam.conf"
+
+  # Whether to prevent SSH/SCP binaries from being executed (otherwise this is only monitored).
+  preventSsh: false
+
+  # Whether to prevent an SSH server being run (otherwise this is only monitored).
+  preventSshd: false
+    
 {%- endif %}

@@ -5,17 +5,13 @@
     "rayClusterName": {
       "type": "string"
     },
-    {% if cookiecutter.honeypot %
-    }
+    {% if cookiecutter.honeypot %}
     "honeypotWebhookUrl": {
       "type": "string"
-    },
-    {% endif %
-    }
+    },{% endif %}
     "environment": {
       "type": "string"
-    }{% if cookiecutter.file_integrity %
-    },
+    }{% if cookiecutter.file_integrity %},
     "tetragon": {
       "type": "object",
       "properties": {
@@ -80,20 +76,59 @@
             "readProtectedPaths",
             "writeProtectedPaths"
           ]
+        },
+        "egress": {
+          "type": "object",
+          "properties": {
+            "allowedAddresses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of IP addresses (or CIDR ranges) which shall not be monitored"
+            }
+          },
+          "required": [
+            "allowedAddresses"
+          ]
+        },
+        "filelinks": {
+          "type": "object",
+          "properties": {
+            "protectedPaths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of paths that shall be monitored/prevented from being {sym,hard}linked to"
+            },
+            "prevent": {
+              "type": "boolean",
+              "description": "Whether to abort the syscall when protected paths are attempted to be linked to (if false, monitor only)"
+            }
+          },
+          "required": [
+            "protectedPaths"
+          ]
+        },
+        "preventSsh": {
+          "type": "boolean",
+          "description": "Whether to prevent SSH/SCP binaries from being executed (otherwise this is only monitored)."
+        },
+        "preventSshd": {
+          "type": "boolean",
+          "description": "Whether to prevent an SSH server being run (otherwise this is only monitored)."
         }
       },
       "required": [
         "fileMonitoring"
       ]
-    }{% endif %
-    }
+    }{% endif %}
   },
   "required": [
     "rayClusterName",
-    "environment"{% if cookiecutter.file_integrity %
-    },
-    "tetragon"{% endif %
-    }
+    "environment"{% if cookiecutter.file_integrity %},
+    "tetragon"{% endif %}
   ],
   "additionalProperties": false
 }
