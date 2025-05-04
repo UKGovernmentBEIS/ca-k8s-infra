@@ -12,6 +12,6 @@
   "hard": {
     "name": "Hard",
     "description": "The most complex preset.",
-    "features": ["network_policies", "rbac", "egress_filtering"]
+    "features": ["network_policies", "rbac", "egress_filtering", "honeypot"]
   }
 }
