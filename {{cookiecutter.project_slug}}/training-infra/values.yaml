@@ -14,15 +14,35 @@ tetragon:
   
   # File Integrity Monitoring configuration
   fileMonitoring:
-    # List of paths to protect
-    protectedPaths:
-      - "/etc/kubernetes/"
-      - "/etc/passwd"
+    # List of write-protected paths
+    # NOTE: "protected" does not necessarily mean that writes are blocked, see enforcement section below
+    writeProtectedPaths:
+      - "/etc"
+      - "/boot"
+      - "/lib"
+      - "/lib64"
+      - "/bin"
+      - "/usr/lib"
+      - "/usr/local/lib"
+      - "/usr/local/sbin"
+      - "/usr/local/bin"
+      - "/usr/bin"
+      - "/usr/sbin"
+      # Add more paths as needed
+
+    # List of read-protected paths
+    readProtectedPaths:
+      - "/boot"
       - "/etc/shadow"
+      - "/etc/profile"
       - "/etc/sudoers"
       - "/etc/pam.conf"
-      # Add more paths as needed
+      - "/etc/bashrc"
+      - "/etc/csh.cshrc"
+      - "/etc/csh.login"
     
-    # Whether to enforce policy (kill processes) or just monitor
-    enforcePolicy: true
-{% endif %}
+    # --- Enforcement ---
+    # Whether to kill processes when protected files are read/written to or just monitor
+    sigkillProtectedRead: false
+    sigkillProtectedWrite: true
+{%- endif %}
