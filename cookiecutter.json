@@ -2,6 +2,7 @@
   "project_slug": "ca-k8s-infra",
   "network_policies": false,
   "rbac": false,
+  "default_deny_egress": false,
   "external_secrets": false,
-  "egress_filtering": false
+  "honeypot": false
 }
