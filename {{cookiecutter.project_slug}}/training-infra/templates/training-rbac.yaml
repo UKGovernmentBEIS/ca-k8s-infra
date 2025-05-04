@@ -20,6 +20,5 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: ray-worker
-    namespace: {{ cookiecutter.namespace }}
 ---
 {% endif %}

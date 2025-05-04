@@ -46,9 +46,9 @@ spec:
         block: 'true'
       template:
         spec:
-{% if cookiecutter.rbac %}
+{%- if cookiecutter.rbac %}
           serviceAccountName: ray-worker
-{% endif %}
+{%- endif %}
           containers:
             - name: ray-worker
               # preloaded onto nodes
@@ -68,14 +68,27 @@ spec:
               volumeMounts:
                 - mountPath: /tmp/ray
                   name: ray-logs
+              env:
+  {%- if cookiecutter.rbac %}
+                - name: MINIO_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ray-worker-minio-credentials
+                      key: ACCESS_KEY_ID
+                - name: MINIO_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ray-worker-minio-credentials
+                      key: SECRET_ACCESS_KEY
+  {%- endif %}
           volumes:
             - name: ray-logs
               emptyDir: {}
 ---
-{% if cookiecutter.rbac %}
+{%- if cookiecutter.rbac %}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: ray-worker
 ---
-{% endif %}
+{%- endif %}
