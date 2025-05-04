@@ -46,6 +46,9 @@ spec:
         block: 'true'
       template:
         spec:
+{% if cookiecutter.rbac %}
+          serviceAccountName: ray-worker
+{% endif %}
           containers:
             - name: ray-worker
               # preloaded onto nodes
@@ -68,3 +71,11 @@ spec:
           volumes:
             - name: ray-logs
               emptyDir: {}
+---
+{% if cookiecutter.rbac %}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ray-worker
+---
+{% endif %}
