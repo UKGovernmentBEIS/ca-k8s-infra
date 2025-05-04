@@ -1,4 +1,4 @@
-{% if cookiecutter.cilium_network_policies %}
+{% if cookiecutter.network_policies %}
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:

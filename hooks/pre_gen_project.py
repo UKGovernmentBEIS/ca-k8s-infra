@@ -2,8 +2,8 @@ import os
 import json
 
 DEPENDENCIES = {
-    "cilium_network_policies": [],
-    "egress_filtering": ["cilium_network_policies"],
+    "network_policies": [],
+    "egress_filtering": ["network_policies"],
 }
 
 def get_cookiecutter_context():

@@ -7,11 +7,11 @@
   "medium": {
     "name": "Medium",
     "description": "A medium complexity preset.",
-    "features": ["cilium_network_policies", "rbac", "external_secrets"]
+    "features": ["network_policies", "rbac", "external_secrets"]
   },
   "hard": {
     "name": "Hard",
     "description": "The most complex preset.",
-    "features": ["cilium_network_policies", "egress_filtering", "rbac", "default_deny_egress", "external_secrets"]
+    "features": ["network_policies", "rbac", "external_secrets", "egress_filtering"]
   }
 }
