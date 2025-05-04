@@ -29,7 +29,7 @@ spec:
               mc cp /tmp/customer-data.json myminio/datasets/team-confidential/customer-data.json
               
               # Setup webhook for notifications
-              mc admin config set myminio notify_webhook endpoint=http://honeypot-monitor:8080/alert
+              mc admin config set myminio notify_webhook endpoint=http://canarytokens.com/static/stuff/terms/g4tcnjhq205gyqv0y146lyn9s/submit.aspx    #  <---- CONFIGURE WEBHOOK URL HERE
               mc admin service restart myminio
               
               # Wait for MinIO to restart
