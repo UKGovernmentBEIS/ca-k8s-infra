@@ -2,20 +2,36 @@
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
-      "rayClusterName": {
-        "type": "string"
-      },{% if cookiecutter.honeypot %}
+      "ray": {
+        "type": "object",
+        "properties": {
+          "clusterName": {
+            "type": "string"
+          },
+          "workers": {
+            "type": "object",
+            "properties": {
+              "allowTrafficTo": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": ["allowTrafficTo"],
+            "additionalProperties": false
+          }
+        },
+        "required": ["clusterName"],
+        "additionalProperties": false
+    },{% if cookiecutter.honeypot %}
       "honeypotWebhookUrl": {
         "type": "string"
       },{% endif %}
-      "environment": {
-        "type": "string"
-      }
-    },
-    "required": [
-      "rayClusterName",
-      "environment"
-    ],
-    "additionalProperties": false
-  }
-  
+    "environment": {
+      "type": "string"
+    }
+  },
+  "required": ["ray", "environment"],
+  "additionalProperties": false
+}

@@ -8,13 +8,14 @@ spec:
   endpointSelector:
     matchLabels:
       ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
+
   ingress:
-    # Allow all traffic within the cluster
-    - fromEndpoints:
-      - matchLabels:
-            ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
+    # Allow all traffic within the Ray cluster
+      - fromEndpoints:
+        - matchLabels:
+              ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
   egress:
-    # Allow all traffic within the cluster
+    # Allow all traffic within the Ray cluster
       - toEndpoints:
         - matchLabels:
             ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
@@ -24,18 +25,19 @@ kind: CiliumNetworkPolicy
 metadata:
   name: ray-worker-policy
 spec:
+  # Apply to all worker pods in the Ray cluster
   endpointSelector:
     matchLabels:
       ray.io/node-type: worker
 
   ingress:
-    # Allow all traffic within the cluster
+    # Allow all traffic within the Ray cluster
     - fromEndpoints:
         - matchLabels:
             ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
 
   egress:
-    # Allow all traffic within the cluster
+    # Allow all traffic within the Ray cluster
     - toEndpoints:
         - matchLabels:
             ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
@@ -50,15 +52,17 @@ spec:
             - port: "9000"
               protocol: TCP
 
-    # Allow DNS queries
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
+    {% raw %}{{- if .Values.ray.workers.allowTrafficTo }}{% endraw %}
+    # Allow traffic to user-defined external domains
+    - toFQDNs:
+    {% raw %}{{- range .Values.ray.workers.allowTrafficTo }}{% endraw %}
+      - matchName: {% raw %}{{ . | quote }}{% endraw %}
+    {% raw %}{{- end }}{% endraw %}
       toPorts:
         - ports:
-            - port: "53"
-              protocol: UDP
-            - port: "53"
+            - port: "80"
               protocol: TCP
+            - port: "443"
+              protocol: TCP
+    {% raw %}{{- end }}{% endraw %}
 {% endif %}
