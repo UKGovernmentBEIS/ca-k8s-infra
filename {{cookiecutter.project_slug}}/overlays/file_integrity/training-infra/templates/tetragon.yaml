@@ -1,5 +1,3 @@
-{% if cookiecutter.file_integrity %}
----
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -401,7 +399,6 @@ data:
               type: "file"
           selectors:
             - matchArgs:
-                # Of course, this doesn't prevent the agent from copying over these binaries and executing them at another path...
                 - index: 1
                   operator: "Equal"
                   values:
@@ -413,4 +410,3 @@ data:
               matchActions:
                 - action: Sigkill
               {{- end }}{% endraw %}
-    {% endif %}
