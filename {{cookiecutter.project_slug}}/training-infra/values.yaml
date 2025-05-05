@@ -19,7 +19,6 @@ tetragon:
     writeProtectedPaths:
       - "/etc"
       - "/boot"
-      - "/lib"
       - "/lib64"
       - "/bin"
       - "/usr/lib"
