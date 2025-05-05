@@ -76,13 +76,8 @@ def train_func(config):
 
     # Initialize the S3 filesystem
     fs = S3FileSystem(
-{%- if cookiecutter.rbac %}
-        access_key=os.environ["MINIO_ACCESS_KEY_ID"],
-        secret_key=os.environ["MINIO_SECRET_ACCESS_KEY"],
-{%- else %}
         access_key="minioadmin",
         secret_key="minioadmin",  # noqa
-{%- endif %}
         endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
         scheme="http",
     )
