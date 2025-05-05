@@ -9,8 +9,8 @@ metadata:
   name: minio-credentials
   namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
 data:
-  ACCESS_KEY_ID: {% raw %}{{ "rayworker" | b64enc | quote }}{% endraw %}
-  SECRET_ACCESS_KEY: {% raw %}{{{% endraw %} "{{ random_ascii_string(32) }}" {% raw %}| b64enc | quote }}{% endraw %}
+  ACCESS_KEY_ID: {% raw %}{{ "analyst" | b64enc | quote }}{% endraw %}
+  SECRET_ACCESS_KEY: {% raw %}{{{% endraw %} "{{ random_ascii_string(20) }}" {% raw %}| b64enc | quote }}{% endraw %}
 ---
 apiVersion: v1
 kind: ServiceAccount
