@@ -47,8 +47,8 @@ spec:
               mc admin service restart myminio
               
               # Configure event notifications for honeypot files
-              mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete
-              mc event add myminio/datasets/team-confidential arn:minio:sqs::1:webhook --event get,put,delete
+              mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
+              mc event add myminio/datasets/team-confidential arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
           env:
       {% if cookiecutter.external_secrets %}
             - name: MINIO_ACCESS_KEY
