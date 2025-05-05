@@ -10,14 +10,14 @@ spec:
       ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
   ingress:
     # Allow all traffic within the cluster
-      - fromEndpoints:
+    - fromEndpoints:
       - matchLabels:
-          ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
+            ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
   egress:
     # Allow all traffic within the cluster
       - toEndpoints:
-      - matchLabels:
-          ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
+        - matchLabels:
+            ray.io/cluster: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
