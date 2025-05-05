@@ -4,6 +4,8 @@ import json
 DEPENDENCIES = {
     "network_policies": [],
     "egress_filtering": ["network_policies"],
+    "rbac": [],
+    "teams": ["rbac"],
 }
 
 def get_cookiecutter_context():
