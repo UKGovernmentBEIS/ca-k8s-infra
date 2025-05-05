@@ -4,7 +4,10 @@
     "properties": {
       "rayClusterName": {
         "type": "string"
-      },
+      },{% if cookiecutter.honeypot %}
+      "honeypotWebhookUrl": {
+        "type": "string"
+      },{% endif %}
       "environment": {
         "type": "string"
       }

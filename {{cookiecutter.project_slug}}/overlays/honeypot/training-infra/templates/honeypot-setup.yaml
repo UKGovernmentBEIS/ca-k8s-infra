@@ -5,16 +5,18 @@ metadata:
 spec:
   template:
     spec:
+      serviceAccountName: honeypot-setup-sa
       containers:
         - name: honeypot-setup
           image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
           imagePullPolicy: Always
+          tty: true  # Required for `mc admin service restart` command to work
           command:
             - /bin/bash
             - -c
             - |
               # Configure MinIO client
-              mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+              mc alias set myminio http://minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
               
               # Create strategic honeypot files
               echo '{"aws_key": "AKIA0EXAMPLEEXAMPLE", "aws_secret": "examplesecrethoneypotvaluedonotuse12345"}' > /tmp/aws-credentials.json
@@ -29,37 +31,60 @@ spec:
               mc cp /tmp/customer-data.json myminio/datasets/team-confidential/customer-data.json
               
               # Setup webhook for notifications
-              mc admin config set myminio notify_webhook endpoint=http://canarytokens.com/static/stuff/terms/g4tcnjhq205gyqv0y146lyn9s/submit.aspx    #  <---- CONFIGURE WEBHOOK URL HERE
+              mc admin config set myminio notify_webhook:1 endpoint={% raw %}{{ .Values.honeypotWebhookUrl }}{% endraw %}
+
+              # Install kubectl
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              chmod +x kubectl
+              mv kubectl /usr/local/bin/
+
+              # Wait for other minio related jobs to complete before restarting minio client
+              until kubectl wait --for=condition=complete job/internal-buckets job/model-sync job/external-buckets --timeout=300s; do
+                sleep 5
+              done
+
+              # Restart MinIO
               mc admin service restart myminio
-              
-              # Wait for MinIO to restart
-              sleep 5
               
               # Configure event notifications for honeypot files
               mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete
               mc event add myminio/datasets/team-confidential arn:minio:sqs::1:webhook --event get,put,delete
-              
-              echo "Honeypot setup complete"
           env:
-    {% if cookiecutter.external_secrets %}
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: minio-username
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: minio-password
-    {% else %}
+    
             - name: MINIO_ACCESS_KEY
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
               value: "minioadmin"
-    {% endif %}
+    
             - name: ENVIRONMENT
               value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
   backoffLimit: 4
   activeDeadlineSeconds: 300
+---
+# Add service account to allow the main job to check for the completion of other minio related jobs
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: honeypot-setup-sa
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: job-reader
+rules:
+- apiGroups: ["batch"]
+  resources: ["jobs"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: honeypot-job-reader
+subjects:
+- kind: ServiceAccount
+  name: honeypot-setup-sa
+roleRef:
+  kind: Role
+  name: job-reader
+  apiGroup: rbac.authorization.k8s.io
