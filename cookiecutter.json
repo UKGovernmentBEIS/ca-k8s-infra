@@ -8,6 +8,5 @@
   "honeypot": false,
   "teams": false,
   "egress_filtering": false,
-  "external_secrets": false,
-  "file_integrity": true
+  "file_integrity": false
 }
