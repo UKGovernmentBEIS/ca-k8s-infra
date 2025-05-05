@@ -50,23 +50,10 @@ spec:
               mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
               mc event add myminio/datasets/team-confidential arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
           env:
-      {% if cookiecutter.external_secrets %}
-            - name: MINIO_ACCESS_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: minio-username
-            - name: MINIO_SECRET_KEY
-              valueFrom:
-                secretKeyRef:
-                  name: minio-credentials
-                  key: minio-password
-      {% else %}
             - name: MINIO_ACCESS_KEY
               value: "minioadmin"
             - name: MINIO_SECRET_KEY
               value: "minioadmin"
-      {% endif %}
             - name: ENVIRONMENT
               value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never

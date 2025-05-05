@@ -1,22 +1,3 @@
-# CAUTION: This file contains honeypot credentials that will trigger alerts if used.
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: admin-aws-secretsmanager
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: us-east-2  # Update as necessary
-      auth:
-        secretRef:
-          accessKeyIDSecretRef:
-            name: admin-aws-credentials
-            key: access-key
-          secretAccessKeySecretRef:
-            name: admin-aws-credentials
-            key: secret-access-key
----
 apiVersion: v1
 kind: Secret
 metadata:
@@ -26,20 +7,3 @@ stringData:
   # These credentials should be linked to a mock pair of AWS API keys, which should trigger alerts if accessed.
   access-key: AKIA475TKMODIHZMT64F
   secret-access-key: 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
----
-apiVersion: external-secrets.io/v1beta1
-kind: ExternalSecret
-metadata:
-  name: admin-secrets
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: admin-aws-secretsmanager
-    kind: SecretStore
-  target:
-    name: admin-system-credentials
-    creationPolicy: Owner
-  data:
-    - secretKey: admin-token
-      remoteRef:
-        key: admin-system-secrets
