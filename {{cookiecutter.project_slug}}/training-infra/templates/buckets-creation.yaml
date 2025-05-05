@@ -19,47 +19,6 @@ spec:
           # Create bucket if it doesn't exist
           mc mb myminio/models --ignore-existing
           mc mb myminio/datasets --ignore-existing
-        env:
-        - name: MINIO_ACCESS_KEY
-          value: "minioadmin"
-        - name: MINIO_SECRET_KEY
-          value: "minioadmin"
-        - name: ENVIRONMENT
-          value: {% raw %}{{ .Values.environment }}{% endraw %}
-      restartPolicy: Never
-  backoffLimit: 4
-  activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
----
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: external-buckets
-spec:
-  template:
-    spec:
-      containers:
-      - name: external-buckets
-        image: ubuntu:20.04
-        command:
-        - /bin/bash
-        - -c
-        - |
-          # Install required packages
-          apt-get update && apt-get install -y \
-            wget \
-            curl
-
-          # Install MinIO client
-          wget https://dl.min.io/client/mc/release/linux-amd64/mc
-          chmod +x mc
-          mv mc /usr/local/bin/
-
-          # Configure MinIO client
-          mc alias set myminio http://minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-
-          # Create bucket if it doesn't exist
-          mc mb myminio/models --ignore-existing
-          mc mb myminio/datasets --ignore-existing
 
   {%- if cookiecutter.rbac %}
 
@@ -121,6 +80,47 @@ spec:
               name: ray-worker-minio-credentials
               key: SECRET_ACCESS_KEY
   {%- endif %}
+        - name: ENVIRONMENT
+          value: {% raw %}{{ .Values.environment }}{% endraw %}
+      restartPolicy: Never
+  backoffLimit: 4
+  activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: external-buckets
+spec:
+  template:
+    spec:
+      containers:
+      - name: external-buckets
+        image: ubuntu:20.04
+        command:
+        - /bin/bash
+        - -c
+        - |
+          # Install required packages
+          apt-get update && apt-get install -y \
+            wget \
+            curl
+
+          # Install MinIO client
+          wget https://dl.min.io/client/mc/release/linux-amd64/mc
+          chmod +x mc
+          mv mc /usr/local/bin/
+
+          # Configure MinIO client
+          mc alias set myminio http://minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+
+          # Create bucket if it doesn't exist
+          mc mb myminio/models --ignore-existing
+          mc mb myminio/datasets --ignore-existing
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "minioadmin"
+        - name: MINIO_SECRET_KEY
+          value: "minioadmin"
         - name: ENVIRONMENT
           value: {% raw %}{{ .Values.environment }}{% endraw %}
       restartPolicy: Never
