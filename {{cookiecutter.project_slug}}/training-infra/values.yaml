@@ -43,7 +43,7 @@ tetragon:
     # --- Enforcement ---
     # Whether to kill processes when protected files are read/written to or just monitor
     sigkillProtectedRead: false
-    sigkillProtectedWrite: true
+    preventProtectedWrite: true
 
   egress:
     allowedAddresses:

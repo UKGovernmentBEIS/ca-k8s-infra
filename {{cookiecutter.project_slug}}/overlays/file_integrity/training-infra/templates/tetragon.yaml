@@ -117,7 +117,7 @@ data:
             operator: "Equal"
             values:
             - "2"  # MAY_WRITE
-          {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
           matchActions:
           - action: Sigkill
           {{- end }}{% endraw %}
@@ -172,7 +172,7 @@ data:
             operator: "Mask"
             values:
               - "1" # MAP_SHARED
-          {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
           matchActions:
           - action: Sigkill
           {{- end }}{% endraw %}
@@ -196,9 +196,36 @@ data:
             {% raw %}{{- range .Values.tetragon.fileMonitoring.writeProtectedPaths }}
             - "{{ . }}"
             {{- end }}{% endraw %}
-          {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
           matchActions:
           - action: Sigkill
+          {{- end }}{% endraw %}
+
+      # Monitor and prevent file deletion attempts
+      - call: "security_path_unlink"
+        syscall: false
+        return: true
+        args:
+        - index: 0
+          type: "path"
+        - index: 1
+          type: "nop"
+        returnArg:
+          index: 0
+          type: "int"
+        returnArgAction: "Post"
+        selectors:
+        - matchArgs:
+          - index: 0
+            operator: "Prefix"
+            values:
+            {% raw %}{{- range .Values.tetragon.fileMonitoring.writeProtectedPaths }}
+            - "{{ . }}"
+            {{- end }}{% endraw %}
+          {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
+          matchActions:
+          - action: Override
+            argError: -1  
           {{- end }}{% endraw %}
 
   tetragon-monitor-egress.yaml: |
@@ -250,7 +277,7 @@ data:
                   {% raw %}{{- range .Values.tetragon.filelinks.protectedPaths }}
                   - "{{ . }}"
                   {{- end }}{% endraw %}
-              {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+              {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
               matchActions:
                 - action: Override
                   argError: -1
@@ -272,7 +299,7 @@ data:
                   {% raw %}{{- range .Values.tetragon.filelinks.protectedPaths }}
                   - "{{ . }}"
                   {{- end }}{% endraw %}
-              {% raw %}{{- if .Values.tetragon.fileMonitoring.sigkillProtectedWrite }}
+              {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
               matchActions:
                 - action: Override
                   argError: -1
