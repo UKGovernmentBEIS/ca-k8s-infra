@@ -2,6 +2,5 @@
   "project_slug": "ca-k8s-infra",
   "network_policies": false,
   "rbac": false,
-  "external_secrets": false,
   "egress_filtering": false
 }
