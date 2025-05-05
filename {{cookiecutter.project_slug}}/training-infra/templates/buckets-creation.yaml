@@ -55,7 +55,7 @@ spec:
           EOF
 
           # Create policy in MinIO
-          mc admin policy add myminio bucket-policy /tmp/bucket_policy.json
+          mc admin policy create myminio bucket-policy /tmp/bucket_policy.json
 
           # Create MinIO user for Ray worker
           mc admin user add myminio ${RAY_WORKER_MINIO_ACCESS_KEY_ID} ${RAY_WORKER_MINIO_SECRET_ACCESS_KEY}
@@ -134,7 +134,7 @@ metadata:
   name: ray-worker-minio-credentials
 data:
   ACCESS_KEY_ID: {% raw %}{{ "rayworker" | b64enc | quote }}{% endraw %}
-  SECRET_ACCESS_KEY: {% raw %}{{{% endraw %} "{{ random_ascii_string(32) }}" {% raw %}| b64enc | quote }}{% endraw %}
+  SECRET_ACCESS_KEY: {% raw %}{{{% endraw %} "{{ random_ascii_string(20) }}" {% raw %}| b64enc | quote }}{% endraw %}
 ---
 {%- endif %}
 {%- if cookiecutter.network_policies %}
