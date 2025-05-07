@@ -1,0 +1,9 @@
+{
+  "_extensions": ["cookiecutter.extensions.RandomStringExtension"],
+  "project_slug": "ca-k8s-infra",
+  "network_policies": false,
+  "rbac": false,
+  "honeypot": false,
+  "teams": false,
+  "egress_filtering": false
+}
