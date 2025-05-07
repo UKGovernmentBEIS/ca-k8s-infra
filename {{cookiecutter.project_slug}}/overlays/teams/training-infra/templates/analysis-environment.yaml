@@ -18,6 +18,7 @@ metadata:
   name: analysis-sa
   namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
 ---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: analyst-role-{% raw %}{{ .Values.environment }}{% endraw %}
@@ -31,6 +32,7 @@ rules:
   resources: ["rayclusters"]
   verbs: ["get", "list"]
 ---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
   name: analyst-role-binding
