@@ -1,0 +1,334 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: create-buckets
+data:
+  main.tf: |
+    terraform {
+      required_providers {
+        minio = {
+          source  = "aminueza/minio"
+          version = "~> 3.0"
+        }
+        aws = {
+          source  = "hashicorp/aws"
+          version = "~> 5.0"
+        }
+      }
+
+      backend "s3" {
+        bucket = "terraform-state"
+        key = "terraform.tfstate"
+
+        endpoint = ""
+        
+        access_key = ""
+        secret_key = ""
+        
+        region = "us-east-1"
+        skip_credentials_validation = true
+        skip_metadata_api_check = true
+        skip_region_validation = true
+        use_path_style = true
+      }
+
+      required_version = ">= 1.0"
+    }
+
+    variable "minio_endpoint_external" {
+      description = "External MinIO endpoint URL"
+      type        = string
+    }
+
+    provider "minio" {
+      minio_insecure = true
+    }
+
+    provider "minio" {
+      minio_server   = var.minio_endpoint_external
+      minio_insecure = true
+      alias          = "external"
+    }
+
+    provider "aws" {
+      region = "us-east-1"
+    }
+
+    resource "minio_s3_bucket" "models" {
+      bucket = "models"
+    }
+
+    resource "minio_s3_bucket" "datasets" {
+      bucket = "datasets"
+    }
+
+    resource "minio_s3_bucket" "models_external" {
+      bucket   = "models"
+      provider = minio.external
+    }
+
+    resource "minio_s3_bucket" "datasets_external" {
+      bucket   = "datasets"
+      provider = minio.external
+    }
+
+    {%- if cookiecutter.rbac %}
+
+    resource "minio_iam_user" "ray_worker" {
+      name = "rayworker"
+    }
+
+    resource "minio_accesskey" "ray_worker" {
+      user = minio_iam_user.ray_worker.name
+    }
+
+    resource "aws_secretsmanager_secret" "ray_worker_secret" {
+      name = "minio/ray-worker-credentials"
+    }
+
+    resource "aws_secretsmanager_secret_version" "ray_worker_secret_version" {
+      secret_id     = aws_secretsmanager_secret.ray_worker_secret.id
+      secret_string = jsonencode({
+        access_key = minio_accesskey.ray_worker.access_key
+        secret_key = minio_accesskey.ray_worker.secret_key
+      })
+    }
+    
+    data "minio_iam_policy_document" "ray_policy" {
+      statement {
+        sid     = "AllowListDatasetsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::datasets"]
+      }
+
+      statement {
+        sid     = "AllowReadFromDatasets"
+        effect  = "Allow"
+        actions = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        resources = ["arn:aws:s3:::datasets/*"]
+      }
+
+      statement {
+        sid     = "AllowWriteToModels"
+        effect  = "Allow"
+        actions = ["s3:PutObject"]
+        resources = ["arn:aws:s3:::models/*"]
+      }
+    }
+
+    resource "minio_iam_policy" "ray_policy" {
+      name   = "bucket-policy"
+      policy = data.minio_iam_policy_document.ray_policy.json
+    }
+
+    resource "minio_iam_user_policy_attachment" "ray_worker" {
+      user_name   = minio_iam_user.ray_worker.id
+      policy_name = minio_iam_policy.ray_policy.id
+    }
+
+    {%- endif %}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: create-buckets
+spec:
+  template:
+    spec:
+      containers:
+        - name: create-buckets
+          image: ghcr.io/opentofu/opentofu:latest
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /workspace &&
+              tofu init -backend-config="access_key=$MINIO_USER" -backend-config="secret_key=$MINIO_PASSWORD" -backend-config="endpoint=http://$MINIO_ENDPOINT" &&
+              tofu apply -auto-approve -var="minio_endpoint_external=$MINIO_ENDPOINT_EXTERNAL"
+          env:
+            - name: MINIO_USER
+              value: "minioadmin"
+            - name: MINIO_PASSWORD
+              value: "minioadmin"
+            - name: MINIO_ENDPOINT
+              value: "minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000"
+            - name: MINIO_ENDPOINT_EXTERNAL
+              value: "minio.minio-external-{{ .Values.environment }}.svc.cluster.local:9000"
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            - name: AWS_ENDPOINT_URL
+              value: "http://aws-proxy.proxy.svc.cluster.local"
+          volumeMounts:
+            - name: tofu-workspace
+              mountPath: /workspace
+            - name: tofu-source
+              mountPath: /workspace/main.tf
+              subPath: main.tf
+      initContainers:
+        - name: create-buckets-init
+          image: localhost:5001/job:{{ .Values.environment }}
+          imagePullPolicy: Always
+          tty: true  # Required for `mc admin service restart` command to work
+          command:
+            - /bin/bash
+            - -c
+            - |
+              mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+
+              mc mb myminio/models --ignore-existing
+              mc mb myminio/datasets --ignore-existing
+
+              mc cp -r /volumes/model-small/ myminio/models/model-small/
+              mc cp -r /volumes/imdb/ myminio/datasets/imdb/
+
+              mc mb myminio/terraform-state --ignore-existing
+
+              {%- if cookiecutter.honeypot %}
+
+              # Create honeypot file
+              echo '{"aws_key": "AKIA0EXAMPLEEXAMPLE", "aws_secret": "examplesecrethoneypotvaluedonotuse12345"}' > /tmp/aws-credentials.json
+              
+              # Place honeypot file in strategic location
+              mc mb myminio/models/.credentials --ignore-existing
+              mc cp /tmp/aws-credentials.json myminio/models/.credentials/aws-credentials.json
+              
+              # Create a fake team-confidential folder
+              mc mb myminio/datasets/team-confidential --ignore-existing
+              echo '{"customer_data": "sample"}' > /tmp/customer-data.json
+              mc cp /tmp/customer-data.json myminio/datasets/team-confidential/customer-data.json
+              
+              # Setup webhook for notifications
+              mc admin config set myminio notify_webhook:1 endpoint={{ .Values.honeypotWebhookUrl }}
+
+              # Restart MinIO (needed to apply config change)
+              mc admin service restart myminio
+              
+              # Configure event notifications for honeypot files
+              mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
+              mc event add myminio/datasets/team-confidential arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
+
+              {%- endif %}
+          env:
+            - name: MINIO_ACCESS_KEY
+              value: "minioadmin"
+            - name: MINIO_SECRET_KEY
+              value: "minioadmin"
+          volumeMounts:
+            - name: dataset-volume
+              mountPath: /volumes/imdb
+              readOnly: true
+            - name: model-volume
+              mountPath: /volumes/model-small
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: tofu-source
+          configMap:
+            name: create-buckets
+        - name: tofu-workspace
+          emptyDir: {}
+        - name: model-volume
+          hostPath:
+            path: /volumes/huggingface/models/model-small
+            type: Directory
+        - name: dataset-volume
+          hostPath:
+            path: /volumes/huggingface/datasets/imdb
+            type: Directory
+  backoffLimit: 4
+  activeDeadlineSeconds: 300
+---
+{%- if cookiecutter.network_policies %}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: create-buckets-job-policy
+spec:
+  endpointSelector:
+    matchLabels:
+      job-name: create-buckets
+  egress:
+    # Allow discovery and download of OpenTofu providers
+    - toFQDNs:
+        - matchPattern: "*.opentofu.org"
+        - matchPattern: "github.com"
+        - matchPattern: "*.github.com"
+        - matchPattern: "*.githubusercontent.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Allow access to the internal MinIO instance
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    # Allow access to the AWS proxy
+    - toEndpoints:
+        - matchLabels:
+            app: aws-proxy
+            k8s:io.kubernetes.pod.namespace: proxy
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP
+---
+{%- endif %}
+{%- if cookiecutter.rbac %}
+apiVersion: external-secrets.io/v1beta1
+kind: SecretStore
+metadata:
+  name: aws-secretsmanager
+spec:
+  provider:
+    aws:
+      service: SecretsManager
+      region: us-east-1
+      auth:
+        secretRef:
+          accessKeyIDSecretRef:
+            name: aws-credentials
+            key: access-key
+          secretAccessKeySecretRef:
+            name: aws-credentials
+            key: secret-access-key
+---
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: ray-worker-minio-credentials
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: aws-secretsmanager
+    kind: SecretStore
+  target:
+    name: ray-worker-minio-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: ACCESS_KEY_ID
+      remoteRef:
+        key: minio/ray-worker-credentials
+        property: access_key
+    - secretKey: SECRET_ACCESS_KEY
+      remoteRef:
+        key: minio/ray-worker-credentials
+        property: secret_key
+---
+{%- endif %}
