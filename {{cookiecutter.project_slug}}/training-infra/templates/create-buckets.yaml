@@ -17,15 +17,11 @@ data:
       }
 
       backend "s3" {
-        bucket = "terraform-state"
-        key = "terraform.tfstate"
+        bucket = "tf-state"
+        key = "internal-buckets.tfstate"
+        
+        profile = "minio"
 
-        endpoint = ""
-        
-        access_key = ""
-        secret_key = ""
-        
-        region = "us-east-1"
         skip_credentials_validation = true
         skip_metadata_api_check = true
         skip_region_validation = true
@@ -35,19 +31,8 @@ data:
       required_version = ">= 1.0"
     }
 
-    variable "minio_endpoint_external" {
-      description = "External MinIO endpoint URL"
-      type        = string
-    }
-
     provider "minio" {
       minio_insecure = true
-    }
-
-    provider "minio" {
-      minio_server   = var.minio_endpoint_external
-      minio_insecure = true
-      alias          = "external"
     }
 
     provider "aws" {
@@ -62,16 +47,6 @@ data:
       bucket = "datasets"
     }
 
-    resource "minio_s3_bucket" "models_external" {
-      bucket   = "models"
-      provider = minio.external
-    }
-
-    resource "minio_s3_bucket" "datasets_external" {
-      bucket   = "datasets"
-      provider = minio.external
-    }
-
     {%- if cookiecutter.rbac %}
 
     resource "minio_iam_user" "ray_worker" {
@@ -82,19 +57,19 @@ data:
       user = minio_iam_user.ray_worker.name
     }
 
-    resource "aws_secretsmanager_secret" "ray_worker_secret" {
+    resource "aws_secretsmanager_secret" "ray_worker" {
       name = "minio/ray-worker-credentials"
     }
 
-    resource "aws_secretsmanager_secret_version" "ray_worker_secret_version" {
-      secret_id     = aws_secretsmanager_secret.ray_worker_secret.id
+    resource "aws_secretsmanager_secret_version" "ray_worker" {
+      secret_id     = aws_secretsmanager_secret.ray_worker.id
       secret_string = jsonencode({
         access_key = minio_accesskey.ray_worker.access_key
         secret_key = minio_accesskey.ray_worker.secret_key
       })
     }
     
-    data "minio_iam_policy_document" "ray_policy" {
+    data "minio_iam_policy_document" "read_datasets" {
       statement {
         sid     = "AllowListDatasetsBucket"
         effect  = "Allow"
@@ -111,53 +86,113 @@ data:
         ]
         resources = ["arn:aws:s3:::datasets/*"]
       }
+    }
+
+    data "minio_iam_policy_document" "write_models" {
+      statement {
+        sid     = "AllowListDatasetsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::models"]
+      }
 
       statement {
         sid     = "AllowWriteToModels"
         effect  = "Allow"
-        actions = ["s3:PutObject"]
-        resources = ["arn:aws:s3:::models/*"]
+        actions = [
+          "s3:PutObject",
+        ]
+        resources = ["arn:aws:s3:::datasets/*"]
       }
     }
 
-    resource "minio_iam_policy" "ray_policy" {
-      name   = "bucket-policy"
-      policy = data.minio_iam_policy_document.ray_policy.json
+    resource "minio_iam_policy" "read_datasets" {
+      name   = "read-datasets"
+      policy = data.minio_iam_policy_document.read_datasets.json
     }
 
-    resource "minio_iam_user_policy_attachment" "ray_worker" {
+    resource "minio_iam_policy" "write_models" {
+      name   = "write-models"
+      policy = data.minio_iam_policy_document.write_models.json
+    }
+
+    resource "minio_iam_user_policy_attachment" "ray_worker_read_datasets" {
       user_name   = minio_iam_user.ray_worker.id
-      policy_name = minio_iam_policy.ray_policy.id
+      policy_name = minio_iam_policy.read_datasets.id
     }
 
+    resource "minio_iam_user_policy_attachment" "ray_worker_write_models" {
+      user_name   = minio_iam_user.ray_worker.id
+      policy_name = minio_iam_policy.write_models.id
+    }
     {%- endif %}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: create-buckets
+  name: internal-buckets
 spec:
   template:
     spec:
-      containers:
-        - name: create-buckets
-          image: ghcr.io/opentofu/opentofu:latest
+      initContainers:
+        - name: prepare-minio
+          image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
           imagePullPolicy: Always
-          command: ["/bin/sh", "-c"]
+          {% if cookiecutter.honeypot %}
+          tty: true  # Required for `mc admin service restart` command to work
+          {% endif %}
+          command: ["/bin/bash", "-c"]
+          args: 
+            - |
+              # Configure MinIO client
+              mc alias set myminio $MINIO_ENDPOINT $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+
+              # Create state bucket if it doesn't exist
+              mc mb myminio/tf-state --ignore-existing
+
+              {%- if cookiecutter.honeypot %}
+
+              # Setup webhook for notifications
+              mc admin config set myminio notify_webhook:1 endpoint={% raw %}{{ .Values.honeypotWebhookUrl }}{% endraw %}
+
+              # Restart MinIO (needed to apply config change)
+              mc admin service restart myminio
+              {% endif %}
           args:
             - |
-              cd /workspace &&
-              tofu init -backend-config="access_key=$MINIO_USER" -backend-config="secret_key=$MINIO_PASSWORD" -backend-config="endpoint=http://$MINIO_ENDPOINT" &&
-              tofu apply -auto-approve -var="minio_endpoint_external=$MINIO_ENDPOINT_EXTERNAL"
+              mc config host add myminio http://$MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD
           env:
             - name: MINIO_USER
               value: "minioadmin"
             - name: MINIO_PASSWORD
               value: "minioadmin"
             - name: MINIO_ENDPOINT
-              value: "minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000"
-            - name: MINIO_ENDPOINT_EXTERNAL
-              value: "minio.minio-external-{{ .Values.environment }}.svc.cluster.local:9000"
+              value: "minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
+      containers:
+        - name: create-internal-buckets
+          image: ghcr.io/opentofu/opentofu:latest
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p ~/.aws && \
+              cat > ~/.aws/config <<EOF
+              [minio]
+              aws_access_key_id = ${MINIO_USER}
+              aws_secret_access_key = ${MINIO_PASSWORD}
+              region = us-east-1
+              endpoint_url = http://${MINIO_ENDPOINT}
+              EOF
+              cd /workspace && \
+              tofu init && \
+              tofu apply -auto-approve
+          env:
+            - name: MINIO_USER
+              value: "minioadmin"
+            - name: MINIO_PASSWORD
+              value: "minioadmin"
+            - name: MINIO_ENDPOINT
+              value: "minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
             - name: AWS_ACCESS_KEY_ID
               valueFrom:
                 secretKeyRef:
@@ -176,27 +211,39 @@ spec:
             - name: tofu-source
               mountPath: /workspace/main.tf
               subPath: main.tf
-      initContainers:
-        - name: create-buckets-init
-          image: localhost:5001/job:{{ .Values.environment }}
+      restartPolicy: Never
+      volumes:
+        - name: tofu-source
+          configMap:
+            name: create-buckets
+        - name: tofu-workspace
+          emptyDir: {}
+        - name: model-volume
+          hostPath:
+            path: /volumes/huggingface/models/model-small
+            type: Directory
+        - name: dataset-volume
+          hostPath:
+            path: /volumes/huggingface/datasets/imdb
+            type: Directory
+  backoffLimit: 4
+  activeDeadlineSeconds: 300
+---
+{%- if cookiecutter.honeypot %}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: internal-buckets
+spec:
+  template:
+    spec:
+      containers:
+        - name: create-honeypot-file
+          image: ghcr.io/opentofu/opentofu:latest
           imagePullPolicy: Always
-          tty: true  # Required for `mc admin service restart` command to work
-          command:
-            - /bin/bash
-            - -c
+          command: ["/bin/sh", "-c"]
+          args:
             - |
-              mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
-
-              mc mb myminio/models --ignore-existing
-              mc mb myminio/datasets --ignore-existing
-
-              mc cp -r /volumes/model-small/ myminio/models/model-small/
-              mc cp -r /volumes/imdb/ myminio/datasets/imdb/
-
-              mc mb myminio/terraform-state --ignore-existing
-
-              {%- if cookiecutter.honeypot %}
-
               # Create honeypot file
               echo '{"aws_key": "AKIA0EXAMPLEEXAMPLE", "aws_secret": "examplesecrethoneypotvaluedonotuse12345"}' > /tmp/aws-credentials.json
               
@@ -208,12 +255,6 @@ spec:
               mc mb myminio/datasets/team-confidential --ignore-existing
               echo '{"customer_data": "sample"}' > /tmp/customer-data.json
               mc cp /tmp/customer-data.json myminio/datasets/team-confidential/customer-data.json
-              
-              # Setup webhook for notifications
-              mc admin config set myminio notify_webhook:1 endpoint={{ .Values.honeypotWebhookUrl }}
-
-              # Restart MinIO (needed to apply config change)
-              mc admin service restart myminio
               
               # Configure event notifications for honeypot files
               mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
@@ -290,45 +331,4 @@ spec:
               protocol: TCP
 ---
 {%- endif %}
-{%- if cookiecutter.rbac %}
-apiVersion: external-secrets.io/v1beta1
-kind: SecretStore
-metadata:
-  name: aws-secretsmanager
-spec:
-  provider:
-    aws:
-      service: SecretsManager
-      region: us-east-1
-      auth:
-        secretRef:
-          accessKeyIDSecretRef:
-            name: aws-credentials
-            key: access-key
-          secretAccessKeySecretRef:
-            name: aws-credentials
-            key: secret-access-key
----
-apiVersion: external-secrets.io/v1beta1
-kind: ExternalSecret
-metadata:
-  name: ray-worker-minio-credentials
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: aws-secretsmanager
-    kind: SecretStore
-  target:
-    name: ray-worker-minio-credentials
-    creationPolicy: Owner
-  data:
-    - secretKey: ACCESS_KEY_ID
-      remoteRef:
-        key: minio/ray-worker-credentials
-        property: access_key
-    - secretKey: SECRET_ACCESS_KEY
-      remoteRef:
-        key: minio/ray-worker-credentials
-        property: secret_key
----
-{%- endif %}
+
