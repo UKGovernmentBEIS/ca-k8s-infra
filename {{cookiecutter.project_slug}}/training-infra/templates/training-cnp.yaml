@@ -1,4 +1,4 @@
-{% if cookiecutter.network_policies %}
+{% if cookiecutter.network_policies -%}
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
@@ -65,4 +65,4 @@ spec:
               protocol: TCP
     {% endif %}
     {% raw %}{{- end }}{% endraw %}
-{% endif %}
+{%- endif %}

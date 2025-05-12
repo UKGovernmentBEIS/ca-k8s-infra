@@ -1,7 +1,11 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: create-buckets
+  name: internal-buckets
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 data:
   main.tf: |
     terraform {
@@ -20,7 +24,10 @@ data:
         bucket = "tf-state"
         key = "internal-buckets.tfstate"
         
-        profile = "minio"
+        access_key = ""
+        secret_key = ""
+        endpoint = ""
+        region = "us-east-1"
 
         skip_credentials_validation = true
         skip_metadata_api_check = true
@@ -125,12 +132,58 @@ data:
       user_name   = minio_iam_user.ray_worker.id
       policy_name = minio_iam_policy.write_models.id
     }
+
+    {%- endif %}
+    {%- if cookiecutter.honeypot %}
+
+    resource "minio_s3_object" "credentials_honeypot" {
+      bucket_name = "models"
+      object_name = ".credentials/aws-credentials.json"
+      content     = jsonencode({
+        access_key = "AKIA0EXAMPLEEXAMPLE"
+        secret_key = "examplesecrethoneypotvaluedonotuse12345"
+      })
+    }
+
+    resource "minio_s3_object" "customer_data_honeypot" {
+      bucket_name = "datasets"
+      object_name = ".datasets/team-confidential/customer-data.json"
+      content     = jsonencode({
+        customer_data = "sample"
+      })
+    }
+
+    resource "minio_s3_bucket_notification" "models_credentials_notification" {
+      bucket = minio_s3_bucket.models.bucket
+      
+      queue {
+        id            = "credentials-events"
+        queue_arn     = "arn:minio:sqs::1:webhook"
+        events        = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectAccessed:*"]
+        filter_prefix = ".credentials"
+      }
+    }
+
+    resource "minio_s3_bucket_notification" "datasets_confidential_notification" {
+      bucket = minio_s3_bucket.datasets.bucket
+      
+      queue {
+        id            = "team-confidential-events"
+        queue_arn     = "arn:minio:sqs::1:webhook"
+        events        = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectAccessed:*"]
+        filter_prefix = "team-confidential"
+      }
+    }
+
     {%- endif %}
 ---
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: internal-buckets
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
 spec:
   template:
     spec:
@@ -138,14 +191,14 @@ spec:
         - name: prepare-minio
           image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
           imagePullPolicy: Always
-          {% if cookiecutter.honeypot %}
+          {%- if cookiecutter.honeypot %}
           tty: true  # Required for `mc admin service restart` command to work
-          {% endif %}
+          {%- endif %}
           command: ["/bin/bash", "-c"]
           args: 
             - |
               # Configure MinIO client
-              mc alias set myminio $MINIO_ENDPOINT $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+              mc alias set myminio http://$MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD
 
               # Create state bucket if it doesn't exist
               mc mb myminio/tf-state --ignore-existing
@@ -157,10 +210,10 @@ spec:
 
               # Restart MinIO (needed to apply config change)
               mc admin service restart myminio
-              {% endif %}
-          args:
-            - |
-              mc config host add myminio http://$MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD
+
+              echo "Restarted minio"
+
+              {%- endif %}
           env:
             - name: MINIO_USER
               value: "minioadmin"
@@ -175,16 +228,8 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
-              mkdir -p ~/.aws && \
-              cat > ~/.aws/config <<EOF
-              [minio]
-              aws_access_key_id = ${MINIO_USER}
-              aws_secret_access_key = ${MINIO_PASSWORD}
-              region = us-east-1
-              endpoint_url = http://${MINIO_ENDPOINT}
-              EOF
               cd /workspace && \
-              tofu init && \
+              tofu init -backend-config="access_key=$MINIO_USER" -backend-config="secret_key=$MINIO_PASSWORD" -backend-config="endpoint=http://$MINIO_ENDPOINT" && \
               tofu apply -auto-approve
           env:
             - name: MINIO_USER
@@ -215,79 +260,9 @@ spec:
       volumes:
         - name: tofu-source
           configMap:
-            name: create-buckets
+            name: internal-buckets
         - name: tofu-workspace
           emptyDir: {}
-        - name: model-volume
-          hostPath:
-            path: /volumes/huggingface/models/model-small
-            type: Directory
-        - name: dataset-volume
-          hostPath:
-            path: /volumes/huggingface/datasets/imdb
-            type: Directory
-  backoffLimit: 4
-  activeDeadlineSeconds: 300
----
-{%- if cookiecutter.honeypot %}
-apiVersion: batch/v1
-kind: Job
-metadata:
-  name: internal-buckets
-spec:
-  template:
-    spec:
-      containers:
-        - name: create-honeypot-file
-          image: ghcr.io/opentofu/opentofu:latest
-          imagePullPolicy: Always
-          command: ["/bin/sh", "-c"]
-          args:
-            - |
-              # Create honeypot file
-              echo '{"aws_key": "AKIA0EXAMPLEEXAMPLE", "aws_secret": "examplesecrethoneypotvaluedonotuse12345"}' > /tmp/aws-credentials.json
-              
-              # Place honeypot file in strategic location
-              mc mb myminio/models/.credentials --ignore-existing
-              mc cp /tmp/aws-credentials.json myminio/models/.credentials/aws-credentials.json
-              
-              # Create a fake team-confidential folder
-              mc mb myminio/datasets/team-confidential --ignore-existing
-              echo '{"customer_data": "sample"}' > /tmp/customer-data.json
-              mc cp /tmp/customer-data.json myminio/datasets/team-confidential/customer-data.json
-              
-              # Configure event notifications for honeypot files
-              mc event add myminio/models/.credentials arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
-              mc event add myminio/datasets/team-confidential arn:minio:sqs::1:webhook --event get,put,delete --ignore-existing
-
-              {%- endif %}
-          env:
-            - name: MINIO_ACCESS_KEY
-              value: "minioadmin"
-            - name: MINIO_SECRET_KEY
-              value: "minioadmin"
-          volumeMounts:
-            - name: dataset-volume
-              mountPath: /volumes/imdb
-              readOnly: true
-            - name: model-volume
-              mountPath: /volumes/model-small
-              readOnly: true
-      restartPolicy: Never
-      volumes:
-        - name: tofu-source
-          configMap:
-            name: create-buckets
-        - name: tofu-workspace
-          emptyDir: {}
-        - name: model-volume
-          hostPath:
-            path: /volumes/huggingface/models/model-small
-            type: Directory
-        - name: dataset-volume
-          hostPath:
-            path: /volumes/huggingface/datasets/imdb
-            type: Directory
   backoffLimit: 4
   activeDeadlineSeconds: 300
 ---
@@ -295,11 +270,15 @@ spec:
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: create-buckets-job-policy
+  name: bucket-jobs-policy
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
 spec:
   endpointSelector:
     matchLabels:
-      job-name: create-buckets
+      job-name: internal-buckets
   egress:
     # Allow discovery and download of OpenTofu providers
     - toFQDNs:
@@ -329,6 +308,4 @@ spec:
         - ports:
             - port: "80"
               protocol: TCP
----
 {%- endif %}
-

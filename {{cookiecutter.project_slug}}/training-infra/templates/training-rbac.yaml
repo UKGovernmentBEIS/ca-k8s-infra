@@ -1,4 +1,4 @@
-{%- if cookiecutter.rbac %}
+{% if cookiecutter.rbac -%}
 apiVersion: v1
 kind: ServiceAccount
 metadata:
