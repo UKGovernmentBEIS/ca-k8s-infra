@@ -1,7 +1,7 @@
 apiVersion: ray.io/v1
 kind: RayCluster
 metadata:
-  name: {% raw %}{{ .Values.rayClusterName }}-{{ .Values.environment }}{% endraw %}
+  name: {% raw %}{{ .Values.ray.clusterName }}-{{ .Values.environment }}{% endraw %}
 spec:
   rayVersion: '2.42.1'
   enableInTreeAutoscaling: false
@@ -85,10 +85,3 @@ spec:
             - name: ray-logs
               emptyDir: {}
 ---
-{%- if cookiecutter.rbac %}
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: ray-worker
----
-{%- endif %}

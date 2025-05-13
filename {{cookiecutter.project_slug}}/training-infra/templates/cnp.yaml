@@ -1,10 +1,30 @@
-{% if cookiecutter.network_policies %}
+{%- if cookiecutter.network_policies -%}
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: default-deny-egress
+  name: default-deny-all
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
 spec:
-  # Apply to all pods in the cluster (default deny)
+  # Apply to all pods in the namespace
+  endpointSelector:
+      matchLabels:
+        role: restricted
+  ingress: 
+  - {}
+  egress: 
+  - {}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: default-allow-dns
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+spec:
+  # Apply to all pods in the namespace
   endpointSelector: {}
   egress:
     # Allow DNS queries (required for service discovery)
@@ -22,4 +42,4 @@ spec:
             dns:
               - matchPattern: "*"
 ---
-{% endif %}
+{%- endif %}

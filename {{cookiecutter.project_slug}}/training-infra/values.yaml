@@ -1,4 +1,9 @@
-rayClusterName: raycluster
+ray:
+  clusterName: raycluster
+
+  workers:
+    allowTrafficTo: []
+
 {% if cookiecutter.honeypot %}
 honeypotWebhookUrl: https://webhook.site/74bf43cc-f7fb-4f65-b643-7d23640331cd
 {% endif %}{% if cookiecutter.file_integrity %}

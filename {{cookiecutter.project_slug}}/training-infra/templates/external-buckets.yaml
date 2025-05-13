@@ -1,0 +1,133 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: external-buckets
+data:
+  main.tf: |
+    terraform {
+      required_providers {
+        minio = {
+          source  = "aminueza/minio"
+          version = "~> 3.0"
+        }
+      }
+
+      backend "s3" {
+        bucket = "tf-state"
+        key = "external-buckets.tfstate"
+        
+        access_key = ""
+        secret_key = ""
+        endpoint = ""
+        region = "us-east-1"
+
+        skip_credentials_validation = true
+        skip_metadata_api_check = true
+        skip_region_validation = true
+        use_path_style = true
+      }
+
+      required_version = ">= 1.0"
+    }
+
+    provider "minio" {
+      minio_insecure = true
+    }
+
+    resource "minio_s3_bucket" "models" {
+      bucket = "models"
+    }
+
+    resource "minio_s3_bucket" "datasets" {
+      bucket = "datasets"
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: external-buckets
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: create-state-bucket
+          image: localhost:5001/job:{% raw %}{{ .Values.environment }}{% endraw %}
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          args: 
+            - |
+              # Configure MinIO client
+              mc alias set myminio http://$MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD
+
+              # Create state bucket if it doesn't exist
+              mc mb myminio/tf-state --ignore-existing
+          env:
+            - name: MINIO_USER
+              value: "minioadmin"
+            - name: MINIO_PASSWORD
+              value: "minioadmin"
+            - name: MINIO_ENDPOINT
+              value: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
+      containers:
+        - name: create-external-buckets
+          image: ghcr.io/opentofu/opentofu:latest
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              cd /workspace && \
+              tofu init -backend-config="access_key=$MINIO_USER" -backend-config="secret_key=$MINIO_PASSWORD" -backend-config="endpoint=http://$MINIO_ENDPOINT" && \
+              tofu apply -auto-approve
+          env:
+            - name: MINIO_USER
+              value: "minioadmin"
+            - name: MINIO_PASSWORD
+              value: "minioadmin"
+            - name: MINIO_ENDPOINT
+              value: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
+          volumeMounts:
+            - name: tofu-workspace
+              mountPath: /workspace
+            - name: tofu-source
+              mountPath: /workspace/main.tf
+              subPath: main.tf
+      restartPolicy: Never
+      volumes:
+        - name: tofu-source
+          configMap:
+            name: external-buckets
+        - name: tofu-workspace
+          emptyDir: {}
+  backoffLimit: 4
+  activeDeadlineSeconds: 300
+---
+{%- if cookiecutter.network_policies %}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: external-buckets-policy
+spec:
+  endpointSelector:
+    matchLabels:
+      job-name: external-buckets
+  egress:
+    # Allow discovery and download of OpenTofu providers
+    - toFQDNs:
+        - matchPattern: "*.opentofu.org"
+        - matchPattern: "github.com"
+        - matchPattern: "*.github.com"
+        - matchPattern: "*.githubusercontent.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Allow access to the external MinIO instance
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-external-{% raw %}{{ .Values.environment }}{% endraw %}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+{%- endif %}

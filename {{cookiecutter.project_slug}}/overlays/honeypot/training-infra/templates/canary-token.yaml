@@ -4,6 +4,6 @@ metadata:
   name: admin-aws-credentials
 type: Opaque
 stringData:
-  # These credentials should be linked to a mock pair of AWS API keys, which should trigger alerts if accessed.
+  # These credentials should be linked to a pair of mock AWS API keys, which should trigger alerts if accessed.
   access-key: AKIA475TKMODIHZMT64F
   secret-access-key: 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
