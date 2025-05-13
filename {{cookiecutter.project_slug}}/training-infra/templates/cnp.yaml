@@ -5,9 +5,13 @@ metadata:
   name: default-deny-all
 spec:
   # Apply to all pods in the namespace
-  endpointSelector: {}
-  ingress: []
-  egress: []
+  endpointSelector:
+      matchLabels:
+        role: restricted
+  ingress: 
+  - {}
+  egress: 
+  - {}
 ---
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
