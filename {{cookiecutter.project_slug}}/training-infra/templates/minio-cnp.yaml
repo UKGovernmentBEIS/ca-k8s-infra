@@ -9,23 +9,9 @@ metadata:
 spec:
   endpointSelector:
     matchLabels: {}
-  egress:
-    - toEndpoints:
         - matchLabels:
             io.kubernetes.pod.namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
             app: minio
-            k8s:io.kubernetes.pod.namespace: minio-external-{% raw %}{{ .Values.environment }}{% endraw %}
-      toPorts:
-        - ports:
-            - port: "9000"
-              protocol: TCP
-    # Allow DNS lookups for services in the cluster
-    - toFQDNs:
-        - matchPattern: "minio.minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local"
-        - matchPattern: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local"
-    # Allow raw IP access to cluster services
-    - toCIDR:
-        - 10.0.0.0/8
       toPorts:
         - ports:
             - port: "9000"
