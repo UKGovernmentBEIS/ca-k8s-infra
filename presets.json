@@ -7,11 +7,20 @@
   "medium": {
     "name": "Medium",
     "description": "A medium complexity preset.",
-    "features": ["network_policies", "rbac"]
+    "features": [
+      "network_policies",
+      "rbac"
+    ]
   },
   "hard": {
     "name": "Hard",
     "description": "The most complex preset.",
-    "features": ["network_policies", "rbac", "egress_filtering", "honeypot"]
+    "features": [
+      "network_policies",
+      "rbac",
+      "egress_filtering",
+      "honeypot",
+      "file_integrity"
+    ]
   }
 }
