@@ -3,14 +3,14 @@ apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
   name: minio-ingress-policy
-  namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
 spec:
   endpointSelector:
-    matchLabels:
-      app: minio
-  ingress:
-    - fromEndpoints:
-      - {}
+    matchLabels: {}
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            io.kubernetes.pod.namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
+            app: minio
       toPorts:
         - ports:
             - port: "9000"
