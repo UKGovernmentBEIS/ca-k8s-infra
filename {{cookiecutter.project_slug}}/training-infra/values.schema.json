@@ -24,13 +24,13 @@
       },
       "required": ["clusterName"],
       "additionalProperties": false
-  },{% if cookiecutter.honeypot %}
-  "honeypotWebhookUrl": {
-    "type": "string"
-  },{% endif %}
-  "environment": {
-    "type": "string"
-  }{% if cookiecutter.file_integrity %},
+    },{% if cookiecutter.honeypot %}
+    "honeypotWebhookUrl": {
+      "type": "string"
+    },{% endif %}
+    "environment": {
+      "type": "string"
+    }{% if cookiecutter.file_integrity %},
     "tetragon": {
       "type": "object",
       "properties": {
@@ -145,7 +145,7 @@
     }{% endif %}
   },
   "required": [
-    "rayClusterName",
+    "ray",
     "environment"{% if cookiecutter.file_integrity %},
     "tetragon"{% endif %}
   ],
