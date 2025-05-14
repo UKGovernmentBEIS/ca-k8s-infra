@@ -7,7 +7,7 @@
       "properties": {
         "clusterName": {
           "type": "string"
-        },
+        }{% if cookiecutter.network_policies %},
         "workers": {
           "type": "object",
           "properties": {
@@ -20,7 +20,7 @@
           },
           "required": ["allowTrafficTo"],
           "additionalProperties": false
-        }
+        }{% endif %}
       },
       "required": ["clusterName"],
       "additionalProperties": false

@@ -1,12 +1,16 @@
 ray:
   clusterName: raycluster
 
+{%- if cookiecutter.network_policies %}
   workers:
     allowTrafficTo: []
+{%- endif %}
 
-{% if cookiecutter.honeypot %}
+{%- if cookiecutter.honeypot %}
 honeypotWebhookUrl: https://webhook.site/74bf43cc-f7fb-4f65-b643-7d23640331cd
-{% endif %}{% if cookiecutter.file_integrity %}
+{%- endif %}
+
+{%- if cookiecutter.file_integrity %}
 tetragon:
   # Resource allocation
   resources:

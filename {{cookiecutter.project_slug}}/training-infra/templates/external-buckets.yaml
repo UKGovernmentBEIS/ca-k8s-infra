@@ -15,11 +15,9 @@ data:
       backend "s3" {
         bucket = "tf-state"
         key = "external-buckets.tfstate"
-        
-        access_key = ""
-        secret_key = ""
-        endpoint = ""
         region = "us-east-1"
+        
+        profile = "minio"
 
         skip_credentials_validation = true
         skip_metadata_api_check = true
@@ -62,10 +60,23 @@ spec:
               # Create state bucket if it doesn't exist
               mc mb myminio/tf-state --ignore-existing
           env:
+          {%- if cookiecutter.external_secrets %}
+            - name: MINIO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-username
+            - name: MINIO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-password
+          {%- else %}
             - name: MINIO_USER
               value: "minioadmin"
             - name: MINIO_PASSWORD
               value: "minioadmin"
+          {%- endif %}
             - name: MINIO_ENDPOINT
               value: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
       containers:
@@ -75,27 +86,42 @@ spec:
           command: ["/bin/sh", "-c"]
           args:
             - |
+              mkdir -p ~/.aws
+              
+              cat > ~/.aws/credentials <<EOF
+              [minio]
+              aws_access_key_id = $MINIO_USER
+              aws_secret_access_key = $MINIO_PASSWORD
+              EOF
+
+              cat > ~/.aws/config <<EOF
+              [profile minio]
+              region = us-east-1
+              endpoint_url = http://$MINIO_ENDPOINT
+              EOF
+
               cd /workspace && \
-              tofu init -backend-config="access_key=$MINIO_USER" -backend-config="secret_key=$MINIO_PASSWORD" -backend-config="endpoint=http://$MINIO_ENDPOINT" && \
+              tofu init && \
               tofu apply -auto-approve
           env:
-          {% if cookiecutter.external_secrets %}
-            - name: MINIO_ACCESS_KEY
+          {%- if cookiecutter.external_secrets %}
+            - name: MINIO_USER
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: minio-username
-            - name: MINIO_SECRET_KEY
+            - name: MINIO_PASSWORD
               valueFrom:
                 secretKeyRef:
                   name: minio-credentials
                   key: minio-password
-          {% else %}
-            - name: MINIO_ACCESS_KEY
+          {%- else %}
+            - name: MINIO_USER
               value: "minioadmin"
-            - name: MINIO_SECRET_KEY
+            - name: MINIO_PASSWORD
               value: "minioadmin"
-          {% endif %}
+          {%- endif %}
+            - name: MINIO_ENDPOINT
               value: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
           volumeMounts:
             - name: tofu-workspace
