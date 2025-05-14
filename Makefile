@@ -27,10 +27,7 @@ stop_port_forward:
 		echo "No port forwarding process found"; \
 	fi
 
-install:
-	uv sync
-
-train: install start_port_forward
+train: start_port_forward
 	@trap 'make stop_port_forward' EXIT 2 15; \
 	echo "Training model..." && \
-	RAY_AIR_NEW_OUTPUT=0 uv run python training/train.py
+	RAY_AIR_NEW_OUTPUT=0 uv run --active python training/train.py
