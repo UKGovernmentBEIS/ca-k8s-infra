@@ -1,0 +1,44 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: stanfordnlp-imdb-dataset-sync
+spec:
+  template:
+    spec:
+      containers:
+      - name: dataset-sync
+        image: localhost:5001/job:${ENVIRONMENT}
+        imagePullPolicy: Always
+        command:
+        - /bin/bash
+        - -c
+        - |
+          # Configure MinIO client
+          mc alias set myminio http://minio.minio-internal-${ENVIRONMENT}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
+
+          # Create bucket if it doesn't exist
+          mc mb myminio/datasets --ignore-existing
+          
+          # Upload to MinIO
+          mc cp -r /volumes/imdb/ myminio/datasets/imdb/
+          
+          echo "Dataset transfer complete"
+        env:
+        - name: MINIO_ACCESS_KEY
+          value: "minioadmin"
+        - name: MINIO_SECRET_KEY
+          value: "minioadmin"
+        - name: ENVIRONMENT
+          value: ${ENVIRONMENT}
+        volumeMounts:
+        - name: dataset-volume
+          mountPath: /volumes/imdb
+          readOnly: true
+      volumes:
+      - name: dataset-volume
+        hostPath:
+          path: /volumes/huggingface/datasets/imdb
+          type: Directory
+      restartPolicy: Never
+  backoffLimit: 0
+  activeDeadlineSeconds: 60  # Job will fail after 60 seconds if not completed

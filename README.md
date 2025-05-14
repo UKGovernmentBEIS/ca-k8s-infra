@@ -11,19 +11,12 @@ This repository contains Infrastructure as Code (IaC) and code definitions for t
 ## Infrastructure
 
 The training infrastructure consists of:
+
 - A Ray cluster with 1 head node and 2 worker nodes
 - Cilium Network Policies for secure communication
 - Integration with internal MinIO for model weights and datasets storage
 
 ## Usage
-
-### Installation
-
-Install dependencies:
-
-```bash
-make install
-```
 
 ### Deployment
 
@@ -51,12 +44,12 @@ make train
 
 This command will:
 
-* Install dependencies
-* Set up port forwarding to the Ray cluster
-* Run the training script
-* Automatically clean up port forwarding on completion
-* Port Forwarding
-* Manually manage port forwarding:
+- Install dependencies
+- Set up port forwarding to the Ray cluster
+- Run the training script
+- Automatically clean up port forwarding on completion
+- Port Forwarding
+- Manually manage port forwarding:
 
 ### Start port forwarding
 
@@ -85,8 +78,29 @@ fs = pyarrow.fs.S3FileSystem(
 )
 ```
 
+## Docker Images
+
+All dockerfiles in the `training-infra/dockerfiles` repo are built externally and pushed with the name of the dockerfile. Any updates to these files in a PR will automatically cause the images to be built and pushed. They can then be accessed with e.g. `localhost:5001/<dockerfile_name>:${ENVIRONMENT}` in Kubernetes manifests.
+
 ## Developer Notes
 
-Package version changes must be coordinated with the infrastructure team as they affect the ray-training-worker image.
-
 The training script automatically handles data and model transfer between MinIO and local storage.
+
+## Directory Structure
+
+```
+.
+├── Makefile             # Main build and deployment commands
+├── README.md            # Documentation
+├── training/            # Training code
+│   ├── __init__.py
+│   └── train.py
+└── training-infra/      # Infrastructure code
+    ├── dockerfiles/     # Docker definitions for training images
+    └── manifests/       # Kubernetes manifest templates
+        ├── buckets-creation.yaml
+        ├── dataset_download.yaml
+        ├── training-cluster.yaml
+        ├── training-cnp.yaml
+        └── weights-download.yaml
+```

@@ -11,19 +11,19 @@ spec:
     # Allow all traffic within the cluster
     - fromEndpoints:
         - matchLabels:
-            ray.io/cluster: raycluster
+            ray.io/cluster: raycluster-${ENVIRONMENT}
 
   egress:
     # Allow all traffic within the cluster
     - toEndpoints:
         - matchLabels:
-            ray.io/cluster: raycluster
+            ray.io/cluster: raycluster-${ENVIRONMENT}
 
     # Allow traffic to minio-internal
     - toEndpoints:
         - matchLabels:
             app: minio
-            k8s:io.kubernetes.pod.namespace: minio-internal
+            k8s:io.kubernetes.pod.namespace: minio-internal-${ENVIRONMENT}
       toPorts:
         - ports:
             - port: "9000"

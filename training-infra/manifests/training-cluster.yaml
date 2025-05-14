@@ -1,7 +1,7 @@
 apiVersion: ray.io/v1
 kind: RayCluster
 metadata:
-  name: raycluster
+  name: raycluster-${ENVIRONMENT}
 spec:
   rayVersion: '2.42.1'
   enableInTreeAutoscaling: false
@@ -15,8 +15,8 @@ spec:
         containers:
           - name: ray-head
             # preloaded onto nodes
-            image: ray-training-worker:latest
-            imagePullPolicy: Never
+            image: localhost:5001/training:${ENVIRONMENT}
+            imagePullPolicy: Always
             ports:
               - containerPort: 6379
                 name: gcs
@@ -49,8 +49,8 @@ spec:
           containers:
             - name: ray-worker
               # preloaded onto nodes
-              image: ray-training-worker:latest
-              imagePullPolicy: Never
+              image: localhost:5001/training:${ENVIRONMENT}
+              imagePullPolicy: Always
               lifecycle:
                 preStop:
                   exec:
