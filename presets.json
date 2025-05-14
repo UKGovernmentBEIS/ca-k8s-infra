@@ -9,6 +9,7 @@
     "description": "A medium complexity preset.",
     "features": [
       "network_policies",
+      "external_secrets",
       "rbac"
     ]
   },
@@ -17,6 +18,7 @@
     "description": "The most complex preset.",
     "features": [
       "network_policies",
+      "external_secrets",
       "rbac",
       "egress_filtering",
       "honeypot",

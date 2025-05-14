@@ -1,23 +1,23 @@
 #!/usr/bin/env python
-import os
-import shutil
-import yaml
 import json
 import logging
+import os
+import shutil
+
+import yaml
 
 log = logging.getLogger(__name__)
 
 
 def copy_overlay(project_dir: str, overlay_name: str):
-    """
-    Merge everything under overlays/<overlay_name> into project_dir,
+    """Merge everything under overlays/<overlay_name> into project_dir,
     preserving the relative sub-folders.
     """
     src_root = os.path.join(project_dir, "overlays", overlay_name)
     if not os.path.isdir(src_root):
         return
 
-    for root, dirs, files in os.walk(src_root):
+    for root, _, files in os.walk(src_root):
         # compute where in project_dir this should land
         rel = os.path.relpath(root, src_root)  # e.g. "" or "training-infra/templates"
         dest_root = os.path.join(project_dir, rel)
@@ -43,7 +43,7 @@ def rm_empty_files(path: str):
             for fname in files:
                 if fname.endswith(".yaml"):
                     full_path = os.path.join(root, fname)
-                    with open(full_path, 'rt') as f:
+                    with open(full_path, "rt") as f:
                         try:
                             content = yaml.safe_load_all(f.read())
                             if all(doc is None for doc in content):

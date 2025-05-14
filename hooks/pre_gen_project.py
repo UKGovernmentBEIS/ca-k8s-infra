@@ -1,12 +1,12 @@
-import os
 import json
 
 DEPENDENCIES = {
     "network_policies": [],
     "egress_filtering": ["network_policies"],
-    "rbac": [],
+    "rbac": ["external_secrets"],
     "teams": ["rbac"],
 }
+
 
 def get_cookiecutter_context():
     # Extract variables from environment
@@ -14,6 +14,7 @@ def get_cookiecutter_context():
 {{ cookiecutter | jsonify }}
 """
     return json.loads(context_str)
+
 
 def main():
     context = get_cookiecutter_context()
@@ -28,9 +29,12 @@ def main():
 
             for dep in depends_on:
                 if dep not in context:
-                    raise Exception(f"'{key}' requires '{dep}' but we cannot find it in the context")
+                    raise Exception(
+                        f"'{key}' requires '{dep}' but we cannot find it in the context"
+                    )
                 if not context[dep]:
                     raise Exception(f"'{key}' requires '{dep}' to be enabled")
+
 
 if __name__ == "__main__":
     main()

@@ -79,11 +79,23 @@ spec:
               tofu init -backend-config="access_key=$MINIO_USER" -backend-config="secret_key=$MINIO_PASSWORD" -backend-config="endpoint=http://$MINIO_ENDPOINT" && \
               tofu apply -auto-approve
           env:
-            - name: MINIO_USER
+          {% if cookiecutter.external_secrets %}
+            - name: MINIO_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-username
+            - name: MINIO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-password
+          {% else %}
+            - name: MINIO_ACCESS_KEY
               value: "minioadmin"
-            - name: MINIO_PASSWORD
+            - name: MINIO_SECRET_KEY
               value: "minioadmin"
-            - name: MINIO_ENDPOINT
+          {% endif %}
               value: "minio.minio-external-{% raw %}{{ .Values.environment }}{% endraw %}.svc.cluster.local:9000"
           volumeMounts:
             - name: tofu-workspace
