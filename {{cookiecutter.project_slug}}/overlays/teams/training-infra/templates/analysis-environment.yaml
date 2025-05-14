@@ -1,0 +1,67 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: minio-credentials
+  namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+data:
+  ACCESS_KEY_ID: {% raw %}{{ "analyst" | b64enc | quote }}{% endraw %}
+  SECRET_ACCESS_KEY: {% raw %}{{{% endraw %} "{{ random_ascii_string(20) }}" {% raw %}| b64enc | quote }}{% endraw %}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: analysis-sa
+  namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: analyst-role-{% raw %}{{ .Values.environment }}{% endraw %}
+rules:
+# Read-only Ray job permissions
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["get", "list"]
+# Read-only Ray cluster permissions
+- apiGroups: ["ray.io"]
+  resources: ["rayclusters"]
+  verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: analyst-role-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: analyst-role-{% raw %}{{ .Values.environment }}{% endraw %}
+subjects:
+- kind: ServiceAccount
+  name: analysis-sa
+  namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+---
+{% if cookiecutter.network_policies %}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: analysis-policy
+  namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+spec:
+  endpointSelector: {}
+  egress:
+    # Allow traffic to minio-internal
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+---
+{% endif %}

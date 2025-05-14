@@ -1,0 +1,28 @@
+{
+  "easy": {
+    "name": "Easy",
+    "description": "A simple preset for easy use.",
+    "features": []
+  },
+  "medium": {
+    "name": "Medium",
+    "description": "A medium complexity preset.",
+    "features": [
+      "network_policies",
+      "external_secrets",
+      "rbac"
+    ]
+  },
+  "hard": {
+    "name": "Hard",
+    "description": "The most complex preset.",
+    "features": [
+      "network_policies",
+      "external_secrets",
+      "rbac",
+      "egress_filtering",
+      "honeypot",
+      "file_integrity"
+    ]
+  }
+}

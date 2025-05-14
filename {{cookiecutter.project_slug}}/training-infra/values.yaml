@@ -1,0 +1,80 @@
+ray:
+  clusterName: raycluster
+
+{%- if cookiecutter.network_policies %}
+  workers:
+    allowTrafficTo: []
+{%- endif %}
+
+{%- if cookiecutter.honeypot %}
+honeypotWebhookUrl: https://webhook.site/74bf43cc-f7fb-4f65-b643-7d23640331cd
+{%- endif %}
+
+{%- if cookiecutter.file_integrity %}
+tetragon:
+  # Resource allocation
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "500Mi"
+    requests:
+      cpu: "100m"
+      memory: "100Mi"
+  
+  # File Integrity Monitoring configuration
+  fileMonitoring:
+    # List of write-protected paths
+    # NOTE: "protected" does not necessarily mean that writes are blocked, see enforcement section below
+    writeProtectedPaths:
+      - "/etc"
+      - "/boot"
+      - "/lib64"
+      - "/bin"
+      - "/usr/lib"
+      - "/usr/local/lib"
+      - "/usr/local/sbin"
+      - "/usr/local/bin"
+      - "/usr/bin"
+      - "/usr/sbin"
+      # Add more paths as needed
+
+    # List of read-protected paths
+    readProtectedPaths:
+      - "/boot"
+      - "/etc/shadow"
+      - "/etc/profile"
+      - "/etc/sudoers"
+      - "/etc/pam.conf"
+      - "/etc/bashrc"
+      - "/etc/csh.cshrc"
+      - "/etc/csh.login"
+    
+    # --- Enforcement ---
+    # Whether to kill processes when protected files are read/written to or just monitor
+    sigkillProtectedRead: false
+    preventProtectedWrite: true
+
+  egress:
+    allowedAddresses:
+      - "127.0.0.1"
+      # Also allows CIDR notation, could be extended to pod CIDR range
+
+  # NOTE: Covers both hardlinks and symlinks.
+  filelinks:
+    prevent: true
+    protectedPaths:  # Paths which may not be linked to.
+      - "/"
+      - "/etc"
+      - "/etc/"
+      - "/etc/passwd"
+      - "/etc/shadow"
+      - "/etc/sudoers"
+      - "/etc/pam.conf"
+
+  # Whether to prevent SSH/SCP binaries from being executed (otherwise this is only monitored).
+  preventSsh: false
+
+  # Whether to prevent an SSH server being run (otherwise this is only monitored).
+  preventSshd: false
+    
+{%- endif %}
