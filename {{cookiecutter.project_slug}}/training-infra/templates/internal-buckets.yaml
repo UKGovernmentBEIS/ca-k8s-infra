@@ -136,7 +136,7 @@ data:
     {%- if cookiecutter.honeypot %}
 
     resource "minio_s3_object" "credentials_honeypot" {
-      bucket_name = "models"
+      bucket_name = minio_s3_bucket.models.bucket
       object_name = ".credentials/aws-credentials.json"
       content     = jsonencode({
         access_key = "AKIA0EXAMPLEEXAMPLE"
@@ -145,7 +145,7 @@ data:
     }
 
     resource "minio_s3_object" "customer_data_honeypot" {
-      bucket_name = "datasets"
+      bucket_name = minio_s3_bucket.datasets.bucket
       object_name = ".datasets/team-confidential/customer-data.json"
       content     = jsonencode({
         customer_data = "sample"
