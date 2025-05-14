@@ -1,0 +1,17 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "type": "object",
+    "properties": {
+        "rayClusterName": {
+            "type": "string"
+        },
+        "environment": {
+            "type": "string"
+        }
+    },
+    "required": [
+        "rayClusterName",
+        "environment"
+    ],
+    "additionalProperties": false
+}
