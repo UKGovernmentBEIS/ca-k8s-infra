@@ -1,11 +1,17 @@
 import json
 
-DEPENDENCIES = {
+DEPENDENCIES: dict[str, list[str]] = {
     "network_policies": [],
-    "egress_filtering": ["network_policies"],
+    "external_secrets": [],
     "rbac": ["external_secrets"],
+    "honeypot": [],
     "teams": ["rbac"],
+    "egress_filtering": ["network_policies"],
+    "file_integrity": [],
 }
+
+# List of mutually incompatible measures
+INCOMPATIBLE: list[tuple] = []
 
 
 def get_cookiecutter_context():
@@ -29,11 +35,17 @@ def main():
 
             for dep in depends_on:
                 if dep not in context:
-                    raise Exception(
+                    raise ValueError(
                         f"'{key}' requires '{dep}' but we cannot find it in the context"
                     )
                 if not context[dep]:
-                    raise Exception(f"'{key}' requires '{dep}' to be enabled")
+                    raise ValueError(f"'{key}' requires '{dep}' to be enabled")
+
+    for incompatible_measures in INCOMPATIBLE:
+        if sum(context.get(measure, False) for measure in incompatible_measures) > 1:
+            raise ValueError(
+                f"These security measures are incompatible: {', '.join(incompatible_measures)}"
+            )
 
 
 if __name__ == "__main__":
