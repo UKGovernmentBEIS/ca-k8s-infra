@@ -22,6 +22,7 @@ spec:
         - "--btf=/sys/kernel/btf/vmlinux"
         - "--export-allowlist={\"event_set\":[\"PROCESS_EXEC\",\"PROCESS_EXIT\",\"PROCESS_KPROBE\"]}"
         - --tracing-policy-dir=/etc/tetragon
+        - --disable-kprobe-multi
         resources:
           limits:
             cpu: {% raw %}{{ .Values.tetragon.resources.limits.cpu | default "500m" }}{% endraw %}
