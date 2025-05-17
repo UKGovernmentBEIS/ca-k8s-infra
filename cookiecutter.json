@@ -9,5 +9,6 @@
   "honeypot": false,
   "teams": false,
   "egress_filtering": false,
-  "file_integrity": false
+  "file_integrity": false,
+  "tripwires": false
 }

@@ -22,7 +22,8 @@
       "rbac",
       "egress_filtering",
       "honeypot",
-      "file_integrity"
+      "file_integrity",
+      "tripwires"
     ]
   }
 }

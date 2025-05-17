@@ -137,7 +137,20 @@
         "preventSshd": {
           "type": "boolean",
           "description": "Whether to prevent an SSH server being run (otherwise this is only monitored)."
-        }
+        }{% if cookiecutter.tripwires %},
+        "tripwires": {
+          "type": "object",
+          "properties": {
+            "preventMemfdExecution": {
+              "type": "boolean",
+              "description": "Whether to prevent running a program from memory using memfd."
+            },
+            "preventReleaseAgentWrite": {
+              "type": "boolean",
+              "description": "Whether to prevent privileged users writing to release_agent files. (This is often done in an exploit to escape containers.)"
+            }
+          }
+        }{% endif %}
       },
       "required": [
         "fileMonitoring"

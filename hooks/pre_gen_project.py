@@ -8,6 +8,7 @@ DEPENDENCIES: dict[str, list[str]] = {
     "teams": ["rbac"],
     "egress_filtering": ["network_policies"],
     "file_integrity": [],
+    "tripwires": ["file_integrity"],
 }
 
 # List of mutually incompatible measures

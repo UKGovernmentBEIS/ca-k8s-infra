@@ -76,5 +76,15 @@ tetragon:
 
   # Whether to prevent an SSH server being run (otherwise this is only monitored).
   preventSshd: false
-    
+
+{%- if cookiecutter.tripwires %}
+  tripwires:
+    # Whether to prevent running a program from memory using memfd.
+    preventMemfdExecution: true
+
+    # Whether to prevent privileged users writing to release_agent files.
+    # This is often done in an exploit to escape containers.
+    preventReleaseAgentWrite: true
+{%- endif %}
+
 {%- endif %}

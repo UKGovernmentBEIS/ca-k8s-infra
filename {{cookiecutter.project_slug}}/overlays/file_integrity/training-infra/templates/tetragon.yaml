@@ -438,3 +438,60 @@ data:
               matchActions:
                 - action: Sigkill
               {{- end }}{% endraw %}
+{%- if cookiecutter.tripwires %}
+  {% raw %}{{- if .Values.tetragon.tripwires.preventMemfdExecution }}
+  tetragon-tripwires-memfd.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "automatic-tripwires-memfd"
+    spec:
+      tracepoints:
+        - subsystem: "sched"
+          event: "sched_process_exec"
+          selectors:
+            - matchBinaries:
+              - operator: "Prefix"
+                values:
+                - "/memfd:"
+                - "memfd:"
+              matchActions:
+                - action: Sigkill
+  {{- end }}{% endraw %}
+  {% raw %}{{- if .Values.tetragon.tripwires.preventReleaseAgentWrite }}
+  tetragon-tripwires-release-agent.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "automatic-tripwires-release-agent"
+    spec:
+      kprobes:
+        - call: "security_file_permission"
+          syscall: false
+          return: false
+          args:
+          - index: 0
+            type: "file"
+          - index: 1
+            type: "int"
+          selectors:
+            - matchArgs:
+                - index: 0
+                  operator: "Postfix"
+                  values:
+                  - "release_agent"
+                - index: 1
+                  operator: "Mask"
+                  values:
+                  - "2"  # MAY_WRITE
+              matchCapabilities:
+              - type: "Effective"
+                operator: "In"
+                values:
+                - "CAP_SYS_ADMIN"
+                - "DAC_OVERRIDE"
+              matchActions:
+                - action: Override
+                  argError: -1
+  {{- end }}{% endraw %}
+{%- endif %}
