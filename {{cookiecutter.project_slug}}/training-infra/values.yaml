@@ -48,6 +48,7 @@ tetragon:
       - "/etc/bashrc"
       - "/etc/csh.cshrc"
       - "/etc/csh.login"
+      - "/var/run/secrets/kubernetes.io/serviceaccount/token"
     
     # --- Enforcement ---
     # Whether to kill processes when protected files are read/written to or just monitor
