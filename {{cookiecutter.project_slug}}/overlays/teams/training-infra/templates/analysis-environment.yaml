@@ -27,19 +27,69 @@ spec:
         property: password
 ---
 apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
+kind: Role
 metadata:
-  name: analyst-{% raw %}{{ .Values.environment }}{% endraw %}
+  name: analysis-admin
+  namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+  verbs: ["*"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings", "roles"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ray-readonly
+  namespace: training-{% raw %}{{ .Values.environment }}{% endraw %}
 rules:
 # Read-only Ray job permissions
 - apiGroups: ["ray.io"]
   resources: ["rayjobs"]
-  verbs: ["get", "list"]
+  verbs: ["get", "list", "watch"]
 # Read-only Ray cluster permissions
 - apiGroups: ["ray.io"]
   resources: ["rayclusters"]
-  verbs: ["get", "list"]
+  verbs: ["get", "list", "watch"]
 ---
+{% raw %}{{- if .Values.teams.analysis }}{% endraw %}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: analysis-admin
+  namespace: analysis-{% raw %}{{ .Values.environment }}{% endraw %}
+subjects:
+- kind: Group
+  name: {% raw %}{{ .Values.teams.analysis }}{% endraw %}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: analysis-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: analysis-ray-readonly
+  namespace: training-{% raw %}{{ .Values.environment }}{% endraw %}
+subjects:
+- kind: Group
+  name: {% raw %}{{ .Values.teams.analysis }}{% endraw %}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: training-ray-readonly
+  apiGroup: rbac.authorization.k8s.io
+---
+{% raw %}{{- end }}{% endraw %}
 {% if cookiecutter.network_policies %}
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
