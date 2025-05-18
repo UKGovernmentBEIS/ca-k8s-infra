@@ -94,7 +94,7 @@ data:
 
     data "minio_iam_policy_document" "write_models" {
       statement {
-        sid     = "AllowListDatasetsBucket"
+        sid     = "AllowListModelsBucket"
         effect  = "Allow"
         actions = ["s3:ListBucket"]
         resources = ["arn:aws:s3:::models"]
@@ -106,7 +106,7 @@ data:
         actions = [
           "s3:PutObject",
         ]
-        resources = ["arn:aws:s3:::datasets/*"]
+        resources = ["arn:aws:s3:::models/*"]
       }
     }
 
@@ -130,6 +130,57 @@ data:
       policy_name = minio_iam_policy.write_models.id
     }
 
+    {%- endif %}
+    {%- if cookiecutter.teams %}
+    
+    resource "minio_iam_user" "analyst" {
+      name = "analyst"
+    }
+
+    resource "minio_accesskey" "analyst" {
+      user = minio_iam_user.analyst.name
+    }
+
+    resource "aws_secretsmanager_secret" "analysis_minio_credentials" {
+      name = "analysis/minio-credentials"‚
+    }
+
+    resource "aws_secretsmanager_secret_version" "analysis_minio_credentials" {
+      secret_id     = aws_secretsmanager_secret.analysis_minio_credentials.id
+      secret_string = jsonencode({
+        access_key = minio_accesskey.analyst.access_key
+        secret_key = minio_accesskey.analyst.secret_key
+      })
+    }
+
+    resource "minio_iam_user_policy_attachment" "analyst_read_datasets" {
+      user_name   = minio_iam_user.analyst.id
+      policy_name = minio_iam_policy.read_datasets.id
+    }
+
+    data "minio_iam_policy_document" "read_models" {
+      statement {
+        sid     = "AllowListModelsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::models"]
+      }
+
+      statement {
+        sid     = "AllowReadFromModels"
+        effect  = "Allow"
+        actions = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        resources = ["arn:aws:s3:::models/*"]
+      }
+    }
+
+    resource "minio_iam_user_policy_attachment" "analyst_read_models" {
+      user_name   = minio_iam_user.analyst.id
+      policy_name = minio_iam_policy.read_models.id
+    }
     {%- endif %}
     {%- if cookiecutter.honeypot %}
 

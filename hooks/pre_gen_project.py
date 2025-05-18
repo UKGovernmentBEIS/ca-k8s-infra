@@ -5,7 +5,7 @@ DEPENDENCIES: dict[str, list[str]] = {
     "external_secrets": [],
     "rbac": ["external_secrets"],
     "honeypot": [],
-    "teams": ["rbac"],
+    "teams": ["rbac", "external_secrets"],
     "egress_filtering": ["network_policies"],
     "file_integrity": [],
 }
