@@ -7,7 +7,9 @@ DEPENDENCIES: dict[str, list[str]] = {
     "honeypot": [],
     "teams": ["rbac"],
     "egress_filtering": ["network_policies"],
-    "file_integrity": [],
+    "tetragon": [],
+    "file_integrity": ["tetragon"],
+    "security_monitoring": ["tetragon"],
     "tripwires": ["file_integrity"],
 }
 
@@ -26,7 +28,8 @@ def get_cookiecutter_context():
 def main():
     context = get_cookiecutter_context()
 
-    # Iterate through the entire context. Since we ignore all keys that are not in DEPENDENCIES, we don't have to filter out anything at this point.
+    # Iterate through the entire context.
+    # Since we ignore all keys that are not in DEPENDENCIES, we don't have to filter out anything at this point.
     for key, value in context.items():
         if depends_on := DEPENDENCIES.get(key):
             # This key belongs to a feature with dependencies

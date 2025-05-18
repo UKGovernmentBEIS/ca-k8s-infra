@@ -30,7 +30,7 @@
     }{% endif %},
     "environment": {
       "type": "string"
-    }{% if cookiecutter.file_integrity %},
+    }{% if cookiecutter.tetragon %},
     "tetragon": {
       "type": "object",
       "properties": {
@@ -64,7 +64,7 @@
               }
             }
           }
-        },
+        }{% if cookiecutter.file_integrity %},
         "fileMonitoring": {
           "type": "object",
           "properties": {
@@ -96,21 +96,6 @@
             "writeProtectedPaths"
           ]
         },
-        "egress": {
-          "type": "object",
-          "properties": {
-            "allowedAddresses": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              },
-              "description": "List of IP addresses (or CIDR ranges) which shall not be monitored"
-            }
-          },
-          "required": [
-            "allowedAddresses"
-          ]
-        },
         "filelinks": {
           "type": "object",
           "properties": {
@@ -129,6 +114,21 @@
           "required": [
             "protectedPaths"
           ]
+        }{% endif %}{% if cookiecutter.security_monitoring %},
+        "egress": {
+          "type": "object",
+          "properties": {
+            "allowedAddresses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of IP addresses (or CIDR ranges) which shall not be monitored"
+            }
+          },
+          "required": [
+            "allowedAddresses"
+          ]
         },
         "preventSsh": {
           "type": "boolean",
@@ -137,7 +137,7 @@
         "preventSshd": {
           "type": "boolean",
           "description": "Whether to prevent an SSH server being run (otherwise this is only monitored)."
-        }{% if cookiecutter.tripwires %},
+        }{% endif %}{% if cookiecutter.tripwires %},
         "tripwires": {
           "type": "object",
           "properties": {
@@ -153,14 +153,14 @@
         }{% endif %}
       },
       "required": [
-        "fileMonitoring"
+        {% if cookiecutter.file_integrity %}"fileMonitoring"{% endif %}
       ]
     }{% endif %}
   },
   "required": [
     "ray",
     "environment"{% if cookiecutter.honeypot %},
-    "honeypotWebhookUrl"{% endif %}{% if cookiecutter.file_integrity %},
+    "honeypotWebhookUrl"{% endif %}{% if cookiecutter.tetragon %},
     "tetragon"{% endif %}
   ],
   "additionalProperties": false

@@ -71,6 +71,7 @@ kind: ConfigMap
 metadata:
   name: tetragon-policies
 data:
+{%- if cookiecutter.file_integrity %}
   tetragon-file-monitoring.yaml: |
     apiVersion: cilium.io/v1alpha1
     kind: TracingPolicy
@@ -226,29 +227,8 @@ data:
           {% raw %}{{- if .Values.tetragon.fileMonitoring.preventProtectedWrite }}
           matchActions:
           - action: Override
-            argError: -1  
+            argError: -1
           {{- end }}{% endraw %}
-
-  tetragon-monitor-egress.yaml: |
-    apiVersion: cilium.io/v1alpha1
-    kind: TracingPolicy
-    metadata:
-      name: "tetragon-monitor-egress"
-    spec:
-      kprobes:
-        - call: "tcp_connect"
-          syscall: false
-          args:
-            - index: 0
-              type: "sock"
-          selectors:
-            - matchArgs:
-                - index: 0
-                  operator: "NotDAddr"
-                  values:
-                  {% raw %}{{- range .Values.tetragon.egress.allowedAddresses }}
-                  - "{{ . }}"
-                  {{- end }}{% endraw %}
 
   tetragon-prevent-links.yaml: |
     apiVersion: cilium.io/v1alpha1
@@ -305,6 +285,29 @@ data:
                 - action: Override
                   argError: -1
               {{- end }}{% endraw %}
+
+{%- endif %}
+{%- if cookiecutter.security_monitoring %}
+  tetragon-monitor-egress.yaml: |
+    apiVersion: cilium.io/v1alpha1
+    kind: TracingPolicy
+    metadata:
+      name: "tetragon-monitor-egress"
+    spec:
+      kprobes:
+        - call: "tcp_connect"
+          syscall: false
+          args:
+            - index: 0
+              type: "sock"
+          selectors:
+            - matchArgs:
+                - index: 0
+                  operator: "NotDAddr"
+                  values:
+                  {% raw %}{{- range .Values.tetragon.egress.allowedAddresses }}
+                  - "{{ . }}"
+                  {{- end }}{% endraw %}
 
   # Taken and modified (to also catch ssh/scp executions) from here: https://github.com/cilium/tetragon/blob/main/examples/policylibrary/sshd.yaml
   tetragon-prevent-ssh.yaml: |
@@ -438,6 +441,8 @@ data:
               matchActions:
                 - action: Sigkill
               {{- end }}{% endraw %}
+
+{%- endif %}
 {%- if cookiecutter.tripwires %}
   {% raw %}{{- if .Values.tetragon.tripwires.preventMemfdExecution }}
   tetragon-tripwires-memfd.yaml: |
