@@ -30,8 +30,8 @@
       "properties": {
         "analysis": {
           "type": "string"
-        },
-      },
+        }
+      }
     }{% endif %}{% if cookiecutter.honeypot %},
     "honeypotWebhookUrl": {
       "type": "string"
