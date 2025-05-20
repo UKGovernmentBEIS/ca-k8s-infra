@@ -17,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: update_presets # For testing, will be configurable_security in prod
+          ref: update_presets
           fetch-depth: 0
 
       - name: Set up Python
@@ -61,8 +61,14 @@ jobs:
             
             # Add and commit
             git add -A
-            git commit -m "Update ${preset} security preset from cookiecutter"
             
-            # Push to remote
-            git push origin "starting-point/${preset}-security"
+            # Check if there are any changes to commit
+            if git diff --staged --quiet; then
+              echo "No changes detected for ${preset} security preset, skipping commit"
+            else
+              git commit -m "Update ${preset} security preset from cookiecutter"
+              
+              # Push to remote
+              git push origin "starting-point/${preset}-security"
+            fi
           done

@@ -6,17 +6,10 @@ from cookiecutter.main import cookiecutter
 
 # Get command line arguments
 if len(sys.argv) < 3:
-    print("Usage: python generate_charts.py <preset_name> [output_base_dir]")
+    print("Usage: python generate_charts.py <security_level> [output_base_dir]")
     sys.exit(1)
 
-security_preset_name_map = {
-    "low": "easy",
-    "medium": "medium",
-    "high": "hard",
-}
-
 security_level = sys.argv[1]
-preset_name = security_preset_name_map[security_level]
 
 output_base_dir = Path(sys.argv[2])
 
@@ -26,7 +19,7 @@ repo_dir = Path(".").absolute()
 presets = json.loads((repo_dir / "presets.json").read_text())
 
 # Get features for this preset
-features = presets[preset_name].get("features", [])
+features = presets[security_level].get("features", [])
 
 # Setup context
 context = {k: True for k in features}
