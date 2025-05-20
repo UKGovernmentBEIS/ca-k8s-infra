@@ -1,7 +1,7 @@
 apiVersion: ray.io/v1
 kind: RayCluster
 metadata:
-  name: {{ .Values.rayClusterName }}-{{ .Values.environment }}
+  name: {{ .Values.ray.clusterName }}-{{ .Values.environment }}
 spec:
   rayVersion: '2.42.1'
   enableInTreeAutoscaling: false
@@ -46,6 +46,7 @@ spec:
         block: 'true'
       template:
         spec:
+          serviceAccountName: ray-worker
           containers:
             - name: ray-worker
               # preloaded onto nodes
@@ -65,6 +66,18 @@ spec:
               volumeMounts:
                 - mountPath: /tmp/ray
                   name: ray-logs
+              env:
+                - name: MINIO_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: ray-worker-minio-credentials
+                      key: ACCESS_KEY_ID
+                - name: MINIO_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: ray-worker-minio-credentials
+                      key: SECRET_ACCESS_KEY
           volumes:
             - name: ray-logs
               emptyDir: {}
+---

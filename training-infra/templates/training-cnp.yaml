@@ -1,23 +1,45 @@
 apiVersion: "cilium.io/v2"
 kind: CiliumNetworkPolicy
 metadata:
-  name: ray-worker-network-policy
+  name: ray-cluster-policy
 spec:
+  # Apply to all pods in the Ray cluster
+  endpointSelector:
+    matchLabels:
+      ray.io/cluster: {{ .Values.ray.clusterName }}-{{ .Values.environment }}
+
+  ingress:
+    # Allow all traffic within the Ray cluster
+    - fromEndpoints:
+      - matchLabels:
+          ray.io/cluster: {{ .Values.ray.clusterName }}-{{ .Values.environment }}
+  egress:
+    # Allow all traffic within the Ray cluster
+    - toEndpoints:
+      - matchLabels:
+          ray.io/cluster: {{ .Values.ray.clusterName }}-{{ .Values.environment }}
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: ray-worker-policy
+spec:
+  # Apply to all worker pods in the Ray cluster
   endpointSelector:
     matchLabels:
       ray.io/node-type: worker
 
   ingress:
-    # Allow all traffic within the cluster
+    # Allow all traffic within the Ray cluster
     - fromEndpoints:
         - matchLabels:
-            ray.io/cluster: {{ .Values.rayClusterName }}-{{ .Values.environment }}
+            ray.io/cluster: {{ .Values.ray.clusterName }}-{{ .Values.environment }}
 
   egress:
-    # Allow all traffic within the cluster
+    # Allow all traffic within the Ray cluster
     - toEndpoints:
         - matchLabels:
-            ray.io/cluster: {{ .Values.rayClusterName }}-{{ .Values.environment }}
+            ray.io/cluster: {{ .Values.ray.clusterName }}-{{ .Values.environment }}
 
     # Allow traffic to minio-internal
     - toEndpoints:
@@ -29,14 +51,16 @@ spec:
             - port: "9000"
               protocol: TCP
 
-    # Allow DNS queries
-    - toEndpoints:
-        - matchLabels:
-            k8s:io.kubernetes.pod.namespace: kube-system
-            k8s-app: kube-dns
+    {{- if .Values.ray.workers.allowTrafficTo }}
+    # Allow traffic to user-defined external domains
+    - toFQDNs:
+    {{- range .Values.ray.workers.allowTrafficTo }}
+      - matchName: {{ . | quote }}
+    {{- end }}
+    
       toPorts:
         - ports:
-            - port: "53"
-              protocol: UDP
-            - port: "53"
+            - port: "443"
               protocol: TCP
+    
+    {{- end }}
