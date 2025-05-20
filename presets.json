@@ -22,6 +22,7 @@
       "rbac",
       "egress_filtering",
       "honeypot",
+      "tetragon",
       "file_integrity",
       "tripwires"
     ]
