@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - configurable_security
+  workflow_dispatch:
 
 jobs:
   update-presets:
