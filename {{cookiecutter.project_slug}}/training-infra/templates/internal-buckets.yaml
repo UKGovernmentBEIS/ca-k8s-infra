@@ -120,6 +120,11 @@ data:
       policy = data.minio_iam_policy_document.write_models.json
     }
 
+    resource "minio_iam_policy" "read_models" {
+      name   = "read-models"
+      policy = data.minio_iam_policy_document.read_models.json
+    }
+
     resource "minio_iam_user_policy_attachment" "ray_worker_read_datasets" {
       user_name   = minio_iam_user.ray_worker.id
       policy_name = minio_iam_policy.read_datasets.id
@@ -142,7 +147,7 @@ data:
     }
 
     resource "aws_secretsmanager_secret" "analysis_minio_credentials" {
-      name = "analysis/minio-credentials"‚
+      name = "analysis/minio-credentials"
     }
 
     resource "aws_secretsmanager_secret_version" "analysis_minio_credentials" {
