@@ -4,9 +4,6 @@ on:
   push:
     branches:
       - configurable_security
-  pull_request:
-    branches:
-      - configurable_security
   workflow_dispatch:
 
 jobs:
@@ -17,7 +14,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main
+          ref: update_presets
           fetch-depth: 0
 
       - name: Set up Python
@@ -32,14 +29,9 @@ jobs:
 
       - name: Generate Helm charts for all presets
         run: |
-          mkdir -p /tmp
-          cp .github/workflows/generate_preset.py /tmp/generate_preset.py
-
-          git checkout configurable_security || git checkout -b configurable_security origin/configurable_security
-                    
           for preset in "low" "medium" "high"; do
             # Run the Python script to generate the Helm chart into the external temp directory
-            if ! python /tmp/generate_preset.py "${preset}" "/tmp/presets"; then
+            if ! python .github/workflows/generate_preset.py "${preset}" "/tmp/presets"; then
               echo "Error: Failed to generate ${preset} security preset"
               exit 1
             fi
