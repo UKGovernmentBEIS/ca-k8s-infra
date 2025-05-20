@@ -2,6 +2,13 @@ ray:
   clusterName: raycluster
   workers:
     allowTrafficTo: []
+
+
+# User group names
+teams:
+  analysis: ""
+  ml: ""
+
 honeypotWebhookUrl: https://webhook.site/74bf43cc-f7fb-4f65-b643-7d23640331cd
 tetragon:
   # Resource allocation
@@ -57,6 +64,16 @@ tetragon:
       - "/etc/shadow"
       - "/etc/sudoers"
       - "/etc/pam.conf"
+  egress:
+    allowedAddresses:
+      - "127.0.0.1"
+      # Also allows CIDR notation, could be extended to pod CIDR range
+
+  # Whether to prevent SSH/SCP binaries from being executed (otherwise this is only monitored).
+  preventSsh: false
+
+  # Whether to prevent an SSH server being run (otherwise this is only monitored).
+  preventSshd: false
   tripwires:
     # Whether to prevent running a program from memory using memfd.
     preventMemfdExecution: true

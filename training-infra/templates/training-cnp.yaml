@@ -58,9 +58,4 @@ spec:
       - matchName: {{ . | quote }}
     {{- end }}
     
-      toPorts:
-        - ports:
-            - port: "443"
-              protocol: TCP
-    
     {{- end }}

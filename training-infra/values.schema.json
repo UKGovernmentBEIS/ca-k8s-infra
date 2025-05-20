@@ -25,6 +25,17 @@
       "required": ["clusterName"],
       "additionalProperties": false
     },
+    "teams": {
+      "type": "object",
+      "properties": {
+        "analysis": {
+          "type": "string"
+        },
+        "ml": {
+          "type": "string"
+        }
+      }
+    },
     "honeypotWebhookUrl": {
       "type": "string"
     },
@@ -114,6 +125,29 @@
           "required": [
             "protectedPaths"
           ]
+        },
+        "egress": {
+          "type": "object",
+          "properties": {
+            "allowedAddresses": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of IP addresses (or CIDR ranges) which shall not be monitored"
+            }
+          },
+          "required": [
+            "allowedAddresses"
+          ]
+        },
+        "preventSsh": {
+          "type": "boolean",
+          "description": "Whether to prevent SSH/SCP binaries from being executed (otherwise this is only monitored)."
+        },
+        "preventSshd": {
+          "type": "boolean",
+          "description": "Whether to prevent an SSH server being run (otherwise this is only monitored)."
         },
         "tripwires": {
           "type": "object",
