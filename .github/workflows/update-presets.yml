@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - configurable_security
+  pull_request:
+    branches:
+      - configurable_security
   workflow_dispatch:
 
 jobs:
