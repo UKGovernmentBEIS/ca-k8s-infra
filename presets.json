@@ -21,8 +21,10 @@
       "network_policies",
       "external_secrets",
       "rbac",
-      "egress_filtering",
+      "teams",
       "honeypot",
+      "tetragon",
+      "security_monitoring",
       "file_integrity",
       "tripwires"
     ]
