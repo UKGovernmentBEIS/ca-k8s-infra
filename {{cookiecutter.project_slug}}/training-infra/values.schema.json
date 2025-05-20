@@ -24,7 +24,18 @@
       },
       "required": ["clusterName"],
       "additionalProperties": false
-    }{% if cookiecutter.honeypot %},
+    }{% if cookiecutter.teams %},
+    "teams": {
+      "type": "object",
+      "properties": {
+        "analysis": {
+          "type": "string"
+        },
+        "ml": {
+          "type": "string"
+        }
+      }
+    }{% endif %}{% if cookiecutter.honeypot %},
     "honeypotWebhookUrl": {
       "type": "string"
     }{% endif %},

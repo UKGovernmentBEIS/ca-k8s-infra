@@ -1,0 +1,107 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: minio-credentials
+  namespace: ml-team-{% raw %}{{ .Values.environment }}{% endraw %}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: team-secretstore-{% raw %}{{ .Values.environment }}{% endraw %}
+    kind: ClusterSecretStore
+  target:
+    name: minio-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: MINIO_USER
+      remoteRef:
+        key: ml/minio-credentials
+        property: access_key
+    - secretKey: MINIO_PASSWORD
+      remoteRef:
+        key: ml/minio-credentials
+        property: secret_key
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ml-admin
+  namespace: ml-team-{% raw %}{{ .Values.environment }}{% endraw %}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims", "events"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+  verbs: ["*"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings", "roles"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ray-readwrite
+  namespace: training-{% raw %}{{ .Values.environment }}{% endraw %}
+rules:
+# All Ray job permissions
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["*"]
+# All Ray cluster permissions
+- apiGroups: ["ray.io"]
+  resources: ["rayclusters"]
+  verbs: ["*"]
+---
+{% raw %}{{- if .Values.teams.ml }}{% endraw %}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ml-admin
+  namespace: ml-team-{% raw %}{{ .Values.environment }}{% endraw %}
+subjects:
+- kind: Group
+  name: {% raw %}{{ .Values.teams.ml }}{% endraw %}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ml-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ml-ray-readwrite
+  namespace: training-{% raw %}{{ .Values.environment }}{% endraw %}
+subjects:
+- kind: Group
+  name: {% raw %}{{ .Values.teams.ml }}{% endraw %}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ray-readwrite
+  apiGroup: rbac.authorization.k8s.io
+---
+{% raw %}{{- end }}{% endraw %}
+{%- if cookiecutter.network_policies %}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: ml-team-policy
+  namespace: ml-team-{% raw %}{{ .Values.environment }}{% endraw %}
+spec:
+  endpointSelector: {}
+  egress:
+    # Allow traffic to minio-internal
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-internal-{% raw %}{{ .Values.environment }}{% endraw %}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+---
+{%- endif %}
