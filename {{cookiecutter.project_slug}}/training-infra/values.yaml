@@ -10,6 +10,7 @@ ray:
 # User group names
 teams:
   analysis: ""
+  ml: ""
 {% endif %}
 
 {%- if cookiecutter.honeypot %}
