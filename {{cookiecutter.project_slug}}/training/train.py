@@ -17,6 +17,11 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 runtime_env = {
     "env_vars": {
         "ENVIRONMENT": os.environ["ENVIRONMENT"],
+        {%- if cookiecutter.teams %}
+        "MINIO_USER": os.getenv("MINIO_USER"),
+        "MINIO_PASSWORD": os.getenv("MINIO_PASSWORD"),
+        "MINIO_ENDPOINT": os.getenv("MINIO_ENDPOINT"),
+        {%- endif %}
     }
 }
 
@@ -75,12 +80,21 @@ def train_func(config):
     rank = ray.train.get_context().get_world_rank()
 
     # Initialize the S3 filesystem
+    {%- if cookiecutter.teams %}
+    fs = S3FileSystem(
+        access_key=os.environ["MINIO_USER"],
+        secret_key=os.environ["MINIO_PASSWORD"],
+        endpoint_override=os.environ["MINIO_ENDPOINT"],
+        scheme="http",
+    )
+    {%- else %}
     fs = S3FileSystem(
         access_key="minioadmin",
         secret_key="minioadmin",  # noqa
         endpoint_override=f"minio.minio-internal-{os.environ['ENVIRONMENT']}.svc.cluster.local:9000",
         scheme="http",
     )
+    {%- endif %}
 
     # copy data to disk
     print("Copying data to disk")
