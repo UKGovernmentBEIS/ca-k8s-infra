@@ -42,9 +42,13 @@ jobs:
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'github-actions@github.com'
 
+          git checkout -b main origin/main
+
           for preset in "low" "medium" "high"; do
+            git checkout main
+
             # Create a branch for this preset if it doesn't exist
-            git checkout -b "starting-point/${preset}" "origin/starting-point/${preset}" || git checkout -b "starting-point/${preset}" main
+            git checkout -b "starting-point/${preset}" "origin/starting-point/${preset}" || git checkout -b "starting-point/${preset}"
             
             # Remove all files except .git
             find . -mindepth 1 -maxdepth 1 -not -path "./.git" -exec rm -rf {} \;
