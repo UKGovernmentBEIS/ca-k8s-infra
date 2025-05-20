@@ -6,6 +6,9 @@ on:
       - configurable_security
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   update-presets:
     runs-on: ubuntu-latest
@@ -14,7 +17,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: update_presets
+          ref: update_presets # For testing, will be configurable_security in prod
           fetch-depth: 0
 
       - name: Set up Python
@@ -48,7 +51,7 @@ jobs:
             git checkout main
 
             # Create a branch for this preset if it doesn't exist
-            git checkout -b "starting-point/${preset}" "origin/starting-point/${preset}" || git checkout -b "starting-point/${preset}"
+            git checkout -b "starting-point/${preset}-security" "origin/starting-point/${preset}-security" || git checkout -b "starting-point/${preset}-security"
             
             # Remove all files except .git
             find . -mindepth 1 -maxdepth 1 -not -path "./.git" -exec rm -rf {} \;
@@ -61,5 +64,5 @@ jobs:
             git commit -m "Update ${preset} security preset from cookiecutter"
             
             # Push to remote
-            git push origin "starting-point/${preset}"
+            git push origin "starting-point/${preset}-security"
           done
