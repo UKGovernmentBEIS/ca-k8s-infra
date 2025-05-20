@@ -1,7 +1,7 @@
 {
-  "easy": {
-    "name": "Easy",
-    "description": "A simple preset for easy use.",
+  "low": {
+    "name": "Low",
+    "description": "A low security preset for easy use.",
     "features": []
   },
   "medium": {
@@ -14,9 +14,9 @@
       "teams"
     ]
   },
-  "hard": {
-    "name": "Hard",
-    "description": "The most complex preset.",
+  "high": {
+    "name": "High",
+    "description": "A high security preset, the most complex case.",
     "features": [
       "network_policies",
       "external_secrets",

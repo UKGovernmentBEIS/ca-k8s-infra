@@ -1,0 +1,74 @@
+name: Update Presets
+
+on:
+  push:
+    branches:
+      - configurable_security
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-presets:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: configurable_security
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cookiecutter
+
+      - name: Generate Helm charts for all presets
+        run: |
+          for preset in "low" "medium" "high"; do
+            # Run the Python script to generate the Helm chart into the external temp directory
+            if ! python .github/workflows/generate_preset.py "${preset}" "/tmp/presets"; then
+              echo "Error: Failed to generate ${preset} security preset"
+              exit 1
+            fi
+          done
+
+      - name: Push changes to branches
+        run: |
+          git config --global user.name 'GitHub Actions'
+          git config --global user.email 'github-actions@github.com'
+
+          git checkout -b main origin/main
+
+          for preset in "low" "medium" "high"; do
+            git checkout main
+
+            # Create a branch for this preset if it doesn't exist
+            git checkout -b "starting-point/${preset}-security" "origin/starting-point/${preset}-security" || git checkout -b "starting-point/${preset}-security"
+            
+            # Remove all files except .git
+            find . -mindepth 1 -maxdepth 1 -not -path "./.git" -exec rm -rf {} \;
+            
+            # Copy files from the external temp directory
+            cp -r "/tmp/presets/${preset}/ca-k8s-infra"/* .
+            
+            # Add and commit
+            git add -A
+            
+            # Check if there are any changes to commit
+            if git diff --staged --quiet; then
+              echo "No changes detected for ${preset} security preset, skipping commit"
+            else
+              git commit -m "Update ${preset} security preset from cookiecutter"
+              
+              # Push to remote
+              git push origin "starting-point/${preset}-security"
+            fi
+          done
