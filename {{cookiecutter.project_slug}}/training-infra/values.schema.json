@@ -30,6 +30,9 @@
       "properties": {
         "analysis": {
           "type": "string"
+        },
+        "ml": {
+          "type": "string"
         }
       }
     }{% endif %}{% if cookiecutter.honeypot %},
