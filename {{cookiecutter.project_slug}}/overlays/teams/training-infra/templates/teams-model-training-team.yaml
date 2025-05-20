@@ -28,7 +28,7 @@ metadata:
   namespace: ml-team-{% raw %}{{ .Values.environment }}{% endraw %}
 rules:
 - apiGroups: [""]
-  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims"]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims", "events"]
   verbs: ["*"]
 - apiGroups: ["apps"]
   resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
