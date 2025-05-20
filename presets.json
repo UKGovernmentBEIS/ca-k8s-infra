@@ -10,7 +10,8 @@
     "features": [
       "network_policies",
       "external_secrets",
-      "rbac"
+      "rbac",
+      "teams"
     ]
   },
   "hard": {
