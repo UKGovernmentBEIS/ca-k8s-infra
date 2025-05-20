@@ -8,48 +8,47 @@ on:
 jobs:
   update-presets:
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
+          ref: main
           fetch-depth: 0
-          
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.13'
-          
+          python-version: "3.13"
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install cookiecutter
-          
-      - name: Generate Helm charts for all presets
-        run: |          
-          # Create a directory outside the repository for temp outputs
-          mkdir -p /tmp
 
+      - name: Generate Helm charts for all presets
+        run: |
+          mkdir -p /tmp
           cp .github/workflows/generate_preset.py /tmp/generate_preset.py
 
-          git checkout configurable_security
+          git checkout configurable_security || git checkout -b configurable_security origin/configurable_security
                     
-          for preset in "easy" "medium" "hard"; do
+          for preset in "low" "medium" "high"; do
             # Run the Python script to generate the Helm chart into the external temp directory
             if ! python /tmp/generate_preset.py "${preset}" "/tmp/presets"; then
-              echo "Error: Failed to generate Helm chart for ${preset} preset"
+              echo "Error: Failed to generate ${preset} security preset"
               exit 1
             fi
           done
-          
+
       - name: Push changes to branches
         run: |
           git config --global user.name 'GitHub Actions'
           git config --global user.email 'github-actions@github.com'
-          
-          for preset in "easy" "medium" "hard"; do
+
+          for preset in "low" "medium" "high"; do
             # Create a branch for this preset if it doesn't exist
-            git checkout "configuration/${preset}" || git checkout -b "configuration/${preset}"
+            git checkout -b "starting-point/${preset}" "origin/starting-point/${preset}" || git checkout -b "starting-point/${preset}" main
             
             # Remove all files except .git
             find . -mindepth 1 -maxdepth 1 -not -path "./.git" -exec rm -rf {} \;
@@ -59,8 +58,8 @@ jobs:
             
             # Add and commit
             git add -A
-            git commit -m "Update Helm chart for ${preset} configuration"
+            git commit -m "Update ${preset} security preset from cookiecutter"
             
             # Push to remote
-            git push origin "configuration/${preset}"
+            git push origin "starting-point/${preset}"
           done
