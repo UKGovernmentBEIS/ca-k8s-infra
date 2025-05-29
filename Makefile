@@ -18,8 +18,9 @@ deploy:
 wait_for_ray:
 	@echo "Waiting for Ray cluster head node to be ready..."
 	@RETRY=0; DELAY=2; \
-	while [ $$RETRY -lt 5 ]; do \
+	while [ $$RETRY -lt 6 ]; do \
 		POD_NAME=$$(kubectl get endpoints raycluster-${ENVIRONMENT}-head-svc -o jsonpath='{.subsets[0].addresses[0].targetRef.name}' 2>/dev/null); \
+		echo "Checking for pod: $$POD_NAME"; \
 		if [ -n "$$POD_NAME" ]; then \
 			echo "Found pod: $$POD_NAME"; \
 			kubectl wait --for=condition=ready "pod/$$POD_NAME" --timeout=60s; \
