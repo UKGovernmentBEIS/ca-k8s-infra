@@ -1,7 +1,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: pythia-70m-model-sync
+  name: model-sync
 spec:
   template:
     spec:
@@ -19,14 +19,8 @@ spec:
           # Create bucket if it doesn't exist
           mc mb myminio/models --ignore-existing
 
-          # Create temporary directory for model
-          mkdir -p /tmp/model
-
-          # Download model from Hugging Face
-          huggingface-cli download EleutherAI/pythia-70m --local-dir /tmp/model --local-dir-use-symlinks False
-
           # Upload to MinIO
-          mc cp -r /tmp/model/ myminio/models/pythia-70m/
+          mc cp -r /volumes/model-small/ myminio/models/model-small/
 
           # Cleanup
           rm -rf /tmp/model
@@ -37,6 +31,15 @@ spec:
           value: "minioadmin"
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
+        volumeMounts:
+        - name: model-volume
+          mountPath: /volumes/model-small
+          readOnly: true
+      volumes:
+      - name: model-volume
+        hostPath:
+          path: /volumes/huggingface/models/model-small
+          type: Directory
       restartPolicy: Never
-  backoffLimit: 4
+  backoffLimit: 0
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
