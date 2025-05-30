@@ -10,7 +10,6 @@ import pyarrow
 import ray
 import torch
 from datasets import load_from_disk
-from elasticsearch import Elasticsearch
 from pyarrow.fs import S3FileSystem
 from ray.train import RunConfig, ScalingConfig
 from ray.train.torch import TorchTrainer, prepare_data_loader, prepare_model
@@ -115,14 +114,6 @@ def train_func(config):
     # Set up logging for this worker
     setup_worker_logging()
     logging.info(f"Starting training function in worker {rank}")
-
-    es = Elasticsearch(
-        [
-            f"http://elasticsearch.observability-{os.environ['ENVIRONMENT']}.svc.cluster.local:9200"
-        ]
-    )
-
-    es.index(index="logs", document={"message": "Started training model"})
 
     # Initialize the S3 filesystem
     fs = S3FileSystem(
@@ -279,10 +270,6 @@ if __name__ == "__main__":
             run_config=RunConfig(results_dir),
         )
 
-    # Logging something
-    es = Elasticsearch([f"http://localhost:9200"])
-
-    es.index(index="logs", document={"message": "Started training"})
 
     # Start training
     try:
