@@ -27,7 +27,7 @@ spec:
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
       restartPolicy: Never
-  backoffLimit: 4
+  backoffLimit: 0
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed
 ---
 apiVersion: batch/v1
@@ -69,5 +69,5 @@ spec:
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
       restartPolicy: Never
-  backoffLimit: 4
+  backoffLimit: 0
   activeDeadlineSeconds: 120  # Job will fail after 120 seconds if not completed

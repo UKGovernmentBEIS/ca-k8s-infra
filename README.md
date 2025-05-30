@@ -18,14 +18,6 @@ The training infrastructure consists of:
 
 ## Usage
 
-### Installation
-
-Install dependencies:
-
-```bash
-make install
-```
-
 ### Deployment
 
 Deploy the Ray cluster and network policies:

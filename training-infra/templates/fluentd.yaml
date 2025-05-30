@@ -16,4 +16,58 @@ spec:
     spec:
       containers:
         - name: fluentd
-          image: fluent/fluentd:v1.15
+          image: fluent/fluentd-kubernetes-daemonset:v1.15.3-debian-elasticsearch7-1.1
+          env:
+            - name: FLUENT_ELASTICSEARCH_HOST
+              value: "elasticsearch"
+            - name: FLUENT_ELASTICSEARCH_PORT
+              value: "{{ .Values.elasticsearch.port }}"
+            - name: FLUENT_ELASTICSEARCH_SCHEME
+              value: "http"
+          volumeMounts:
+            - name: fluentd-config
+              mountPath: /fluentd/etc/fluent.conf
+              subPath: fluent.conf
+            - name: pos-files
+              mountPath: /var/log/fluentd-pos
+            - name: varlog
+              mountPath: /var/log
+      volumes:
+        - name: fluentd-config
+          configMap:
+            name: fluentd-config
+        - name: pos-files
+          emptyDir: {}
+        - name: varlog
+          hostPath:
+            path: /var/log
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: observability-{{ .Values.environment }}
+data:
+  fluent.conf: |
+    # Monitor container logs
+    <source>
+      @type tail
+      path /var/log/containers/*ray*.log
+      pos_file /var/log/fluentd-pos/containers.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type none
+      </parse>
+    </source>
+
+    # Send to Elasticsearch
+    <match kubernetes.**>
+      @type elasticsearch
+      host "#{ENV['FLUENT_ELASTICSEARCH_HOST']}"
+      port "#{ENV['FLUENT_ELASTICSEARCH_PORT']}"
+      scheme "#{ENV['FLUENT_ELASTICSEARCH_SCHEME']}"
+      logstash_format true
+      logstash_prefix ray-logs
+      include_tag_key true
+    </match>
