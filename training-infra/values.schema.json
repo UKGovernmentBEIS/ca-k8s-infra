@@ -33,7 +33,6 @@
     }
   },
   "required": [
-    "rayClusterName",
     "environment",
     "elasticsearch",
     "kibana"
