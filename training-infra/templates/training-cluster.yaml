@@ -24,6 +24,17 @@ spec:
                 name: dashboard
               - containerPort: 10001
                 name: client
+            env:
+              - name: MINIO_ACCESS_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: minio-credentials
+                    key: username
+              - name: MINIO_SECRET_KEY
+                valueFrom:
+                  secretKeyRef:
+                    name: minio-credentials
+                    key: password
             resources:
               limits:
                 cpu: "4"
@@ -65,6 +76,17 @@ spec:
               volumeMounts:
                 - mountPath: /tmp/ray
                   name: ray-logs
+              env:
+                - name: MINIO_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-credentials
+                      key: username
+                - name: MINIO_SECRET_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: minio-credentials
+                      key: password
           volumes:
             - name: ray-logs
               emptyDir: {}
