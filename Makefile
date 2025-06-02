@@ -1,21 +1,25 @@
 .PHONY: entrypoint install train deploy start_port_forward stop_port_forward
 
-ENVIRONMENT ?= agent-env-latest
+ENVIRONMENT ?= dev-
 
 entrypoint: deploy train
 
 make refresh:
 	@echo "Refreshing resources..."
-	@helm uninstall training-infra 
+	@helm uninstall training-infra
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 
 deploy:
 	@echo "Deploying resources..."
-	@helm upgrade --install training-infra  ./training-infra --set environment=${ENVIRONMENT}
+	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 	@echo "Waiting for jobs to complete..."
 	@kubectl get jobs -o name | xargs -I {} bash -c 'kubectl wait --for=condition=complete {} --timeout=300s || kubectl wait --for=condition=failed {} --timeout=300s'
 
-start_port_forward:
+wait_for_ray:
+	@echo "Waiting for Ray cluster head node to be ready..."
+	@POD_NAME=$$(kubectl get endpoints raycluster-${ENVIRONMENT}-head-svc -o jsonpath='{.subsets[0].addresses[0].targetRef.name}') && kubectl wait --for=condition=ready pod/$$POD_NAME --timeout=60s
+
+start_port_forward: wait_for_ray
 	@echo "Starting port forwarding..."
 	@kubectl port-forward service/raycluster-${ENVIRONMENT}-head-svc 8265:8265 10001:10001 & echo $$! >> .port_forward.pid
 
