@@ -1,0 +1,437 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: internal-buckets
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+data:
+  main.tf: |
+    terraform {
+      required_providers {
+        minio = {
+          source  = "aminueza/minio"
+          version = "~> 3.0"
+        }
+        aws = {
+          source  = "hashicorp/aws"
+          version = "~> 5.0"
+        }
+      }
+
+      backend "s3" {
+        bucket = "tf-state"
+        key = "internal-buckets.tfstate"
+        region = "us-east-1"
+        
+        profile = "minio"
+
+        skip_credentials_validation = true
+        skip_metadata_api_check = true
+        skip_region_validation = true
+        use_path_style = true
+      }
+
+      required_version = ">= 1.0"
+    }
+
+    provider "minio" {
+      minio_insecure = true
+    }
+
+    provider "aws" {
+      profile = "default"
+    }
+
+    resource "minio_s3_bucket" "models" {
+      bucket = "models"
+    }
+
+    resource "minio_s3_bucket" "datasets" {
+      bucket = "datasets"
+    }
+
+    resource "minio_iam_user" "ray_worker" {
+      name = "rayworker"
+    }
+
+    resource "minio_accesskey" "ray_worker" {
+      user = minio_iam_user.ray_worker.name
+    }
+
+    resource "aws_secretsmanager_secret" "ray_worker" {
+      name = "minio/ray-worker-credentials"
+    }
+
+    resource "aws_secretsmanager_secret_version" "ray_worker" {
+      secret_id     = aws_secretsmanager_secret.ray_worker.id
+      secret_string = jsonencode({
+        access_key = minio_accesskey.ray_worker.access_key
+        secret_key = minio_accesskey.ray_worker.secret_key
+      })
+    }
+    
+    data "minio_iam_policy_document" "read_datasets" {
+      statement {
+        sid     = "AllowListDatasetsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::datasets"]
+      }
+
+      statement {
+        sid     = "AllowReadFromDatasets"
+        effect  = "Allow"
+        actions = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        resources = ["arn:aws:s3:::datasets/*"]
+      }
+    }
+
+    data "minio_iam_policy_document" "write_models" {
+      statement {
+        sid     = "AllowListModelsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::models"]
+      }
+
+      statement {
+        sid     = "AllowWriteToModels"
+        effect  = "Allow"
+        actions = [
+          "s3:PutObject",
+        ]
+        resources = ["arn:aws:s3:::models/*"]
+      }
+    }
+
+    data "minio_iam_policy_document" "read_models" {
+      statement {
+        sid     = "AllowListModelsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::models"]
+      }
+
+      statement {
+        sid     = "AllowReadFromModels"
+        effect  = "Allow"
+        actions = [
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        resources = ["arn:aws:s3:::models/*"]
+      }
+    }
+
+    data "minio_iam_policy_document" "readwrite_models" {
+      statement {
+        sid     = "AllowListModelsBucket"
+        effect  = "Allow"
+        actions = ["s3:ListBucket"]
+        resources = ["arn:aws:s3:::models"]
+      }
+
+      statement {
+        sid     = "AllowReadWriteToModels"
+        effect  = "Allow"
+        actions = [
+          "s3:GetObject",
+          "s3:GetObjectVersion",
+          "s3:PutObject",
+          "s3:DeleteObject",
+          "s3:AbortMultipartUpload",
+          "s3:ListMultipartUploadParts"
+        ]
+        resources = ["arn:aws:s3:::models/*"]
+      }
+    }
+
+    resource "minio_iam_policy" "read_datasets" {
+      name   = "read-datasets"
+      policy = data.minio_iam_policy_document.read_datasets.json
+    }
+
+    resource "minio_iam_policy" "write_models" {
+      name   = "write-models"
+      policy = data.minio_iam_policy_document.write_models.json
+    }
+
+    resource "minio_iam_policy" "read_models" {
+      name   = "read-models"
+      policy = data.minio_iam_policy_document.read_models.json
+    }
+
+    resource "minio_iam_policy" "readwrite_models" {
+      name   = "readwrite-models"
+      policy = data.minio_iam_policy_document.readwrite_models.json
+    }
+
+    resource "minio_iam_user_policy_attachment" "ray_worker_read_datasets" {
+      user_name   = minio_iam_user.ray_worker.id
+      policy_name = minio_iam_policy.read_datasets.id
+    }
+
+    resource "minio_iam_user_policy_attachment" "ray_worker_write_models" {
+      user_name   = minio_iam_user.ray_worker.id
+      policy_name = minio_iam_policy.write_models.id
+    }
+    
+    resource "minio_iam_user" "analyst" {
+      name = "analyst"
+    }
+
+    resource "minio_accesskey" "analyst" {
+      user = minio_iam_user.analyst.name
+    }
+
+    resource "aws_secretsmanager_secret" "analysis_minio_credentials" {
+      name = "analysis/minio-credentials"
+    }
+
+    resource "aws_secretsmanager_secret_version" "analysis_minio_credentials" {
+      secret_id     = aws_secretsmanager_secret.analysis_minio_credentials.id
+      secret_string = jsonencode({
+        access_key = minio_accesskey.analyst.access_key
+        secret_key = minio_accesskey.analyst.secret_key
+      })
+    }
+
+    resource "minio_iam_user_policy_attachment" "analyst_read_datasets" {
+      user_name   = minio_iam_user.analyst.id
+      policy_name = minio_iam_policy.read_datasets.id
+    }
+
+    resource "minio_iam_user" "ml-engineer" {
+      name = "ml-engineer"
+    }
+
+    resource "minio_accesskey" "ml-engineer" {
+      user = minio_iam_user.ml-engineer.name
+    }
+
+    resource "aws_secretsmanager_secret" "ml_minio_credentials" {
+      name = "ml/minio-credentials"
+    }
+
+    resource "aws_secretsmanager_secret_version" "ml_minio_credentials" {
+      secret_id     = aws_secretsmanager_secret.ml_minio_credentials.id
+      secret_string = jsonencode({
+        access_key = minio_accesskey.ml-engineer.access_key
+        secret_key = minio_accesskey.ml-engineer.secret_key
+      })
+    }
+
+    resource "minio_iam_user_policy_attachment" "ml-engineer_read_datasets" {
+      user_name   = minio_iam_user.ml-engineer.id
+      policy_name = minio_iam_policy.read_datasets.id
+    }
+
+
+    resource "minio_iam_user_policy_attachment" "analyst_read_models" {
+      user_name   = minio_iam_user.analyst.id
+      policy_name = minio_iam_policy.read_models.id
+    }
+
+    resource "minio_iam_user_policy_attachment" "ml-engineer_read_models" {
+      user_name   = minio_iam_user.ml-engineer.id
+      policy_name = minio_iam_policy.readwrite_models.id
+    }
+
+    resource "minio_s3_object" "credentials_honeypot" {
+      bucket_name = minio_s3_bucket.models.bucket
+      object_name = ".credentials/aws-credentials.json"
+      content     = jsonencode({
+        access_key = "AKIA0EXAMPLEEXAMPLE"
+        secret_key = "examplesecrethoneypotvaluedonotuse12345"
+      })
+    }
+
+    resource "minio_s3_object" "customer_data_honeypot" {
+      bucket_name = minio_s3_bucket.datasets.bucket
+      object_name = ".datasets/team-confidential/customer-data.json"
+      content     = jsonencode({
+        customer_data = "sample"
+      })
+    }
+
+    resource "minio_s3_bucket_notification" "models_credentials_notification" {
+      bucket = minio_s3_bucket.models.bucket
+      
+      queue {
+        id            = "credentials-events"
+        queue_arn     = "arn:minio:sqs::1:webhook"
+        events        = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectAccessed:*"]
+        filter_prefix = ".credentials"
+      }
+    }
+
+    resource "minio_s3_bucket_notification" "datasets_confidential_notification" {
+      bucket = minio_s3_bucket.datasets.bucket
+      
+      queue {
+        id            = "team-confidential-events"
+        queue_arn     = "arn:minio:sqs::1:webhook"
+        events        = ["s3:ObjectCreated:*", "s3:ObjectRemoved:*", "s3:ObjectAccessed:*"]
+        filter_prefix = "team-confidential"
+      }
+    }
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: internal-buckets
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "0"
+spec:
+  template:
+    spec:
+      initContainers:
+        - name: prepare-minio
+          image: localhost:5001/job:{{ .Values.environment }}
+          imagePullPolicy: Always
+          tty: true  # Required for `mc admin service restart` command to work
+          command: ["/bin/bash", "-c"]
+          args: 
+            - |
+              # Configure MinIO client
+              mc alias set myminio http://$MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD
+
+              # Create state bucket if it doesn't exist
+              mc mb myminio/tf-state --ignore-existing
+
+              # Setup webhook for notifications
+              mc admin config set myminio notify_webhook:1 endpoint={{ .Values.honeypotWebhookUrl }}
+
+              # Restart MinIO (needed to apply config change)
+              mc admin service restart myminio
+          env:
+            - name: MINIO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-username
+            - name: MINIO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-password
+            - name: MINIO_ENDPOINT
+              value: "minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000"
+      containers:
+        - name: create-internal-buckets
+          image: ghcr.io/opentofu/opentofu:latest
+          imagePullPolicy: Always
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              mkdir -p ~/.aws
+              
+              cat > ~/.aws/credentials <<EOF
+              [default]
+              aws_access_key_id = $DEFAULT_AWS_ACCESS_KEY_ID
+              aws_secret_access_key = $DEFAULT_AWS_SECRET_ACCESS_KEY
+
+              [minio]
+              aws_access_key_id = $MINIO_USER
+              aws_secret_access_key = $MINIO_PASSWORD
+              EOF
+
+              cat > ~/.aws/config <<EOF
+              [default]
+              region = us-east-1
+              endpoint_url = $DEFAULT_AWS_ENDPOINT_URL
+
+              [profile minio]
+              region = us-east-1
+              endpoint_url = http://$MINIO_ENDPOINT
+              EOF
+
+              cd /workspace && \
+              tofu init && \
+              tofu apply -auto-approve
+          env:
+            - name: MINIO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-username
+            - name: MINIO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-password
+            - name: MINIO_ENDPOINT
+              value: "minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000"
+            - name: DEFAULT_AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: access-key
+            - name: DEFAULT_AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: aws-credentials
+                  key: secret-access-key
+            - name: DEFAULT_AWS_ENDPOINT_URL
+              value: "http://aws-proxy.proxy.svc.cluster.local"
+          volumeMounts:
+            - name: tofu-workspace
+              mountPath: /workspace
+            - name: tofu-source
+              mountPath: /workspace/main.tf
+              subPath: main.tf
+      restartPolicy: Never
+      volumes:
+        - name: tofu-source
+          configMap:
+            name: internal-buckets
+        - name: tofu-workspace
+          emptyDir: {}
+  backoffLimit: 4
+  activeDeadlineSeconds: 300
+---
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: internal-buckets-policy
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-1"
+spec:
+  endpointSelector:
+    matchLabels:
+      job-name: internal-buckets
+  egress:
+    # Allow discovery and download of OpenTofu providers
+    - toFQDNs:
+        - matchPattern: "*.opentofu.org"
+        - matchPattern: "github.com"
+        - matchPattern: "*.github.com"
+        - matchPattern: "*.githubusercontent.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP
+    # Allow access to the internal MinIO instance
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-internal-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+    # Allow access to the AWS proxy
+    - toEndpoints:
+        - matchLabels:
+            app: aws-proxy
+            k8s:io.kubernetes.pod.namespace: proxy
+      toPorts:
+        - ports:
+            - port: "80"
+              protocol: TCP

@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: setup-minio-data
+spec:
+  template:
+    spec:
+      containers:
+        - name: setup-minio-data
+          image: localhost:5001/job:{{ .Values.environment }}
+          imagePullPolicy: Always
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              mc alias set myminio $MINIO_ENDPOINT $MINIO_USER $MINIO_PASSWORD
+
+              mc cp -r /volumes/imdb/ myminio/datasets/imdb/
+              mc cp -r /volumes/model-small/ myminio/models/model-small/
+          env:
+          
+            - name: MINIO_USER
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-username
+            - name: MINIO_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: minio-credentials
+                  key: minio-password
+          
+            - name: MINIO_ENDPOINT
+              value: "http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000"
+          volumeMounts:
+            - name: dataset-volume
+              mountPath: /volumes/imdb
+              readOnly: true
+            - name: model-volume
+              mountPath: /volumes/model-small
+              readOnly: true
+      restartPolicy: Never
+      volumes:
+        - name: dataset-volume
+          hostPath:
+            path: /volumes/huggingface/datasets/imdb
+            type: Directory
+        - name: model-volume
+          hostPath:
+            path: /volumes/huggingface/models/model-small
+            type: Directory
+  backoffLimit: 4
+  activeDeadlineSeconds: 300

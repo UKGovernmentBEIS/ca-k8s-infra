@@ -1,0 +1,105 @@
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: minio-credentials
+  namespace: ml-team-{{ .Values.environment }}
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: team-secretstore-{{ .Values.environment }}
+    kind: ClusterSecretStore
+  target:
+    name: minio-credentials
+    creationPolicy: Owner
+  data:
+    - secretKey: MINIO_USER
+      remoteRef:
+        key: ml/minio-credentials
+        property: access_key
+    - secretKey: MINIO_PASSWORD
+      remoteRef:
+        key: ml/minio-credentials
+        property: secret_key
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ml-admin
+  namespace: ml-team-{{ .Values.environment }}
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services", "configmaps", "secrets", "persistentvolumeclaims", "events"]
+  verbs: ["*"]
+- apiGroups: ["apps"]
+  resources: ["deployments", "statefulsets", "daemonsets", "replicasets"]
+  verbs: ["*"]
+- apiGroups: ["batch"]
+  resources: ["jobs", "cronjobs"]
+  verbs: ["*"]
+- apiGroups: ["rbac.authorization.k8s.io"]
+  resources: ["rolebindings", "roles"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ray-readwrite
+  namespace: training-{{ .Values.environment }}
+rules:
+# All Ray job permissions
+- apiGroups: ["ray.io"]
+  resources: ["rayjobs"]
+  verbs: ["*"]
+# All Ray cluster permissions
+- apiGroups: ["ray.io"]
+  resources: ["rayclusters"]
+  verbs: ["*"]
+---
+{{- if .Values.teams.ml }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ml-admin
+  namespace: ml-team-{{ .Values.environment }}
+subjects:
+- kind: Group
+  name: {{ .Values.teams.ml }}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ml-admin
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ml-ray-readwrite
+  namespace: training-{{ .Values.environment }}
+subjects:
+- kind: Group
+  name: {{ .Values.teams.ml }}
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: ray-readwrite
+  apiGroup: rbac.authorization.k8s.io
+---
+{{- end }}
+apiVersion: "cilium.io/v2"
+kind: CiliumNetworkPolicy
+metadata:
+  name: ml-team-policy
+  namespace: ml-team-{{ .Values.environment }}
+spec:
+  endpointSelector: {}
+  egress:
+    # Allow traffic to minio-internal
+    - toEndpoints:
+        - matchLabels:
+            app: minio
+            k8s:io.kubernetes.pod.namespace: minio-internal-{{ .Values.environment }}
+      toPorts:
+        - ports:
+            - port: "9000"
+              protocol: TCP
+---

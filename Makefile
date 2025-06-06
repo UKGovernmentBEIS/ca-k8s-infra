@@ -34,4 +34,7 @@ stop_port_forward:
 train: start_port_forward
 	@trap 'make stop_port_forward' EXIT 2 15; \
 	echo "Training model..." && \
+	export MINIO_USER="minioadmin" && \
+	export MINIO_PASSWORD="minioadmin" && \
+	export MINIO_ENDPOINT="minio.minio-internal-${ENVIRONMENT}.svc.cluster.local:9000" && \
 	RAY_AIR_NEW_OUTPUT=0 uv run --active python training/train.py
