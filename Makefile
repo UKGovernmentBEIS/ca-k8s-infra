@@ -13,12 +13,29 @@ deploy:
 	@echo "Deploying resources..."
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 	@echo "Waiting for jobs to complete..."
-	@kubectl get jobs -o name | xargs -I {} bash -c 'kubectl wait --for=condition=complete {} --timeout=300s || kubectl wait --for=condition=failed {} --timeout=300s'
-
+	@bash ./scripts/wait_for_jobs.sh
 
 wait_for_ray:
 	@echo "Waiting for Ray cluster head node to be ready..."
-	@POD_NAME=$$(kubectl get endpoints raycluster-${ENVIRONMENT}-head-svc -o jsonpath='{.subsets[0].addresses[0].targetRef.name}') && kubectl wait --for=condition=ready pod/$$POD_NAME --timeout=60s
+	@RETRY=0; DELAY=2; \
+	while [ $$RETRY -lt 6 ]; do \
+		POD_NAME=$$(kubectl get endpoints raycluster-${ENVIRONMENT}-head-svc -o jsonpath='{.subsets[0].addresses[0].targetRef.name}' 2>/dev/null); \
+		echo "Checking for pod: $$POD_NAME"; \
+		if [ -n "$$POD_NAME" ]; then \
+			echo "Found pod: $$POD_NAME"; \
+			kubectl wait --for=condition=ready "pod/$$POD_NAME" --timeout=60s; \
+			break; \
+		else \
+			RETRY=$$((RETRY + 1)); \
+			echo "Attempt $$RETRY/5: Pod not found, waiting $$DELAY seconds..."; \
+			sleep $$DELAY; \
+			DELAY=$$((DELAY * 2)); \
+		fi; \
+	done; \
+	if [ $$RETRY -eq 5 ]; then \
+		echo "Error: Could not find pod after 5 attempts"; \
+		exit 1; \
+	fi
 
 start_port_forward: wait_for_ray
 	@echo "Starting port forwarding..."
