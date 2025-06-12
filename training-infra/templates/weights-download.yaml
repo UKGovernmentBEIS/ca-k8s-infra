@@ -26,9 +26,9 @@ spec:
           rm -rf /tmp/model
         env:
         - name: MINIO_ACCESS_KEY
-          value: "minioadmin"
+          value: "Qw8n3kF4l5p6s7t8u9v0w1x2y3z4A5B2!"
         - name: MINIO_SECRET_KEY
-          value: "minioadmin"
+          value: "6C7d8E9f0G1h2I3j4K5l6M7n8O9p0Q1r2S3t4U5v6W7x8Y9z!"
         - name: ENVIRONMENT
           value: {{ .Values.environment }}
         volumeMounts:
