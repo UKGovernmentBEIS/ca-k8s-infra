@@ -24,6 +24,9 @@ spec:
                 name: dashboard
               - containerPort: 10001
                 name: client
+            env:
+              - name: RAY_LOG_TO_STDERR
+                value: "1"
             resources:
               limits:
                 cpu: "4"
@@ -55,6 +58,9 @@ spec:
                 preStop:
                   exec:
                     command: ["/bin/sh","-c","ray stop"]
+              env:
+                - name: RAY_LOG_TO_STDERR
+                  value: "1"
               resources:
                 limits:
                   cpu: "2"
