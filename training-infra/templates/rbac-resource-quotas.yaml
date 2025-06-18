@@ -5,8 +5,8 @@ metadata:
   namespace: team-alpha-{{ .Values.environment }}
 spec:
   hard:
-    cpu: "8"
-    memory: 16Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
     pods: "10"
 ---
 apiVersion: v1
@@ -16,6 +16,6 @@ metadata:
   namespace: team-beta-{{ .Values.environment }}
 spec:
   hard:
-    cpu: "8"
-    memory: 16Gi
+    limits.cpu: "8"
+    limits.memory: 16Gi
     pods: "10"
