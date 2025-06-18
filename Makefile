@@ -1,8 +1,8 @@
-.PHONY: entrypoint install train deploy start_port_forward stop_port_forward
+.PHONY: entrypoint install train deploy start_port_forward stop_port_forward build-test-image run-test-job"
 
 ENVIRONMENT ?= dev-
 
-entrypoint: deploy train
+entrypoint: deploy run-test-job train
 
 make refresh:
 	@echo "Refreshing resources..."
@@ -53,3 +53,17 @@ train: start_port_forward
 	@trap 'make stop_port_forward' EXIT 2 15; \
 	echo "Training model..." && \
 	RAY_AIR_NEW_OUTPUT=0 uv run --active python training/train.py
+
+run-test-job:
+	@echo "Running test job..."
+	# make sure the proper env is used in the tester.yaml - this should be done with
+	# proper template, but do it like this to quickly check if it works
+	@cat tester.yaml | sed "s/ENV/${ENVIRONMENT}/g" > tester-tmp.yaml && mv tester-tmp.yaml tester.yaml
+	@kubectl delete job tests --ignore-not-found
+	@env | grep -v PATH > local.env
+	@kubectl create configmap test-env --from-env-file=local.env --dry-run=client -o yaml | kubectl apply -f -
+	@kubectl apply -f tester.yaml
+	@echo "Waiting for test job to complete..."
+	@kubectl wait --for=condition=complete job/tests --timeout=300s || kubectl wait --for=condition=failed job/tests --timeout=300s
+	@echo "Test job logs:"
+	@kubectl logs job/tests
