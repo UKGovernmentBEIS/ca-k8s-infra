@@ -5,11 +5,15 @@ ENVIRONMENT ?= dev-
 entrypoint: deploy train
 
 make refresh:
+	@echo "Removing unfinished jobs..."
+	@kubectl get jobs -o json | jq -r '.items[] | select((.status.failed // 0) >= 1 or ((.status.active // 0) >= 1 and (.status.succeeded // 0) == 0)) | .metadata.name' | xargs -r kubectl delete job
 	@echo "Refreshing resources..."
 	@helm uninstall training-infra
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 
 deploy:
+	@echo "Removing unfinished jobs..."
+	@kubectl get jobs -o json | jq -r '.items[] | select((.status.failed // 0) >= 1 or ((.status.active // 0) >= 1 and (.status.succeeded // 0) == 0)) | .metadata.name' | xargs -r kubectl delete job
 	@echo "Deploying resources..."
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 	@echo "Waiting for jobs to complete..."
