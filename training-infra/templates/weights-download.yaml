@@ -14,6 +14,7 @@ spec:
         - -c
         - |
           # Configure MinIO client
+          set -euo pipefail
           mc alias set myminio http://minio.minio-internal-{{ .Values.environment }}.svc.cluster.local:9000 $MINIO_ACCESS_KEY $MINIO_SECRET_KEY
 
           # Create bucket if it doesn't exist
