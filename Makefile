@@ -1,19 +1,20 @@
-.PHONY: entrypoint install train deploy start_port_forward stop_port_forward
+.PHONY: entrypoint install train deploy start_port_forward stop_port_forward refresh
 
 ENVIRONMENT ?= dev-
 
-entrypoint: deploy train
+entrypoint: refresh train
 
 deploy:
 	@echo "Removing unfinished jobs..."
-	@kubectl get jobs -o json | jq -r '.items[] | select((.status.failed // 0) >= 1 or ((.status.active // 0) >= 1 and (.status.succeeded // 0) == 0)) | .metadata.name' | xargs -r kubectl delete job
+	@kubectl get jobs -o json | jq -r '.items[] | select((.status.failed // 0) >= 1 or ((.status.active // 0) >= 1 and (.status.succeeded // 0) == 0)) | .metadata.name' | xargs -r kubectl delete job --wait=true
 	@echo "Deploying resources..."
 	@helm upgrade --install training-infra ./training-infra --set environment=${ENVIRONMENT}
 	@echo "Waiting for jobs to complete..."
 	@bash ./scripts/wait_for_jobs.sh
 
 make refresh:
-	@helm uninstall training-infra
+	@if helm status training-infra >/dev/null 2>&1; then \
+		helm uninstall training-infra; \
 	@$(MAKE) deploy
 
 wait_for_ray:
