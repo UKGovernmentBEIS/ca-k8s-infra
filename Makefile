@@ -15,6 +15,7 @@ deploy:
 make refresh:
 	@if helm status training-infra >/dev/null 2>&1; then \
 		helm uninstall training-infra; \
+	fi
 	@$(MAKE) deploy
 
 wait_for_ray:
